@@ -74,3 +74,9 @@ export function eachDayOf(start: ISODate, end: ISODate): ISODate[] {
   for (let d = start; d <= end; d = addDays(d, 1)) days.push(d);
   return days;
 }
+
+/** `20:00` → `8pm`, `19:30` → `7:30pm` — for tight spots like calendar cells. */
+export function compactClock(t: ClockTime): string {
+  const [h, m] = t.split(":").map(Number);
+  return `${h % 12 || 12}${m ? `:${String(m).padStart(2, "0")}` : ""}${h < 12 ? "am" : "pm"}`;
+}

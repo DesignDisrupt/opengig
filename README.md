@@ -1,4 +1,4 @@
-# Band Gig Calendar (working title)
+# OpenGig
 
 A simple shared calendar for a band. Members mark their availability ahead of
 time; the band manager sees which dates work for everyone and books gigs on them.

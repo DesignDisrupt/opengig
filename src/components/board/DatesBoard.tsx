@@ -4,12 +4,12 @@ import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { QuickResult } from "@/app/actions";
 import type { BandBoardDay, BandOption, MemberDay } from "@/lib/board";
-import { dayOfMonth, longDate } from "@/lib/dates";
+import { compactClock, dayOfMonth, longDate } from "@/lib/dates";
 import { bandColor } from "@/lib/view";
+import { CalendarGrid, GigChip } from "./CalendarGrid";
 import { DayForm } from "./DayForm";
 import { Panel } from "./Panel";
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 /**
  * Booking Dates: a month grid of which days work for a band (green works,
@@ -87,31 +87,19 @@ export function DatesBoard({
 
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-10">
         <div>
-          <div className="grid grid-cols-7 pb-2 text-center text-[11px] font-medium text-faint md:text-left md:text-[12px]">
-            {WEEKDAYS.map((d) => (
-              <span key={d} className="md:px-2">
-                <span className="md:hidden">{d[0]}</span>
-                <span className="hidden md:inline">{d}</span>
-              </span>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-y-1.5 md:gap-1.5">
-            {weeks.flat().map((d, i) =>
-              d ? (
-                <Cell
-                  key={d.date}
-                  day={d}
-                  today={today}
-                  bandId={bandId}
-                  selected={picked === d.date}
-                  focused={!picked && d.date === quickDate}
-                  onPick={() => setPicked(d.date)}
-                />
-              ) : (
-                <span key={i} className="md:min-h-[96px]" />
-              ),
+          <CalendarGrid
+            weeks={weeks}
+            cell={(d) => (
+              <Cell
+                day={d}
+                today={today}
+                bandId={bandId}
+                selected={picked === d.date}
+                focused={!picked && d.date === quickDate}
+                onPick={() => setPicked(d.date)}
+              />
             )}
-          </div>
+          />
           <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 text-[12px] text-muted">
             <span className="flex items-center gap-1.5">
               <span className="size-2.5 rounded-full bg-ok-tint ring-1 ring-ok/40" /> Everyone free
@@ -341,14 +329,14 @@ function Cell({
       onClick={onPick}
       aria-pressed={selected}
       aria-label={`${longDate(day.date)}: ${headline(day, "the band")}`}
-      className={`flex flex-col items-center md:min-h-[96px] md:items-stretch md:rounded-xl md:border md:p-2 md:text-left md:transition-colors md:duration-200 ${
+      className={`flex w-full flex-col items-center md:h-full md:min-h-[112px] md:items-stretch md:p-2 md:text-left md:transition-[background-color,box-shadow] md:duration-200 ${
+        open ? "md:bg-ok-tint/70 md:hover:bg-ok-tint" : "md:hover:bg-surface/60"
+      } ${
         selected
-          ? `md:border-fg ${open ? "md:bg-ok-tint" : ""}`
+          ? "md:shadow-[inset_0_0_0_2px_var(--fg)]"
           : focused
-            ? `md:border-line lg:border-fg ${open ? "md:bg-ok-tint" : ""}`
-            : open
-            ? "md:border-transparent md:bg-ok-tint md:hover:border-ok/40"
-            : "md:border-line md:hover:border-fg/30"
+            ? "lg:shadow-[inset_0_0_0_1.5px_var(--fg)]"
+            : ""
       } ${past ? "opacity-35" : ""}`}
     >
       <span
@@ -368,12 +356,11 @@ function Cell({
       </span>
       <span className="mt-1.5 hidden min-w-0 md:block">
         {day.booked ? (
-          <span
-            className="block truncate rounded-md px-1.5 py-1 text-[11px] font-medium"
-            style={{ background: `color-mix(in srgb, ${color} 15%, transparent)`, color }}
-          >
-            Booked
-          </span>
+          <GigChip
+            color={color}
+            label="Booked"
+            time={day.booked.startTime ? compactClock(day.booked.startTime) : undefined}
+          />
         ) : open || past ? null : day.verdict === "maybe" ? (
           <span className="block truncate rounded-md border border-dashed border-fg/30 px-1.5 py-0.5 text-[11px] text-muted">Maybe</span>
         ) : (
