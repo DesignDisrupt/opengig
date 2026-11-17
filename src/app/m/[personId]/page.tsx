@@ -5,7 +5,7 @@ import { Page, Skeleton } from "@/components/ui";
 import { memberMonth } from "@/lib/board";
 import { addMonths, ISO_MONTH, todayISO } from "@/lib/dates";
 import { getCalendar } from "@/lib/store";
-import { canBook, isManager } from "@/lib/me";
+import { gigBandsFor, isManager } from "@/lib/me";
 import { bandShort, bandsFor, findPerson } from "@/lib/view";
 
 export default function MemberPage(props: PageProps<"/m/[personId]">) {
@@ -37,7 +37,7 @@ async function Member({ params, searchParams }: PageProps<"/m/[personId]">) {
       today={today}
       weeks={memberMonth(cal, personId, month, isManager(person))}
       manager={isManager(person)}
-      canBook={canBook(person)}
+      gigBandIds={gigBandsFor(person, cal.bands)}
       bands={cal.bands.map((b) => ({ id: b.id, name: b.name, short: bandShort(b.id) }))}
       myBandIds={bandsFor(cal, personId).map((b) => b.id)}
       prevHref={href(addMonths(month, -1))}

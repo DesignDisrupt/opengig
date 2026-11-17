@@ -35,7 +35,9 @@ export function BoardLayout({
     <>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-[28px] leading-tight font-semibold tracking-[-0.02em] lg:text-[34px]">{title}</h1>
+          <h1 className="text-[28px] leading-tight font-semibold tracking-[-0.02em] lg:text-[34px]">
+            {title}
+          </h1>
           {summary && <p className="mt-1 text-[15px] text-muted">{summary}</p>}
         </div>
         {actions && <div className="flex w-full gap-2 sm:w-auto">{actions}</div>}

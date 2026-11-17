@@ -21,7 +21,7 @@ export function MemberBoard({
   today,
   weeks,
   manager = false,
-  canBook = false,
+  gigBandIds = [],
   bands,
   myBandIds,
   prevHref,
@@ -35,8 +35,8 @@ export function MemberBoard({
   weeks: (MemberDay | null)[][];
   /** The manager's calendar: every band's gigs, and the panel only adds gigs. */
   manager?: boolean;
-  /** Adam and Brady: + Add gig, the Gig option and gig Edit/Cancel. */
-  canBook?: boolean;
+  /** Bands this person may add gigs for: every band for Adam and Brady, their non-WMH bands for others. */
+  gigBandIds?: string[];
   bands: BandOption[];
   myBandIds: string[];
   prevHref: string;
@@ -77,14 +77,14 @@ export function MemberBoard({
             : "Every day is free. Tap one to change it. Everyone’s gigs and plans show too."
         }
         actions={
-          (!manager || canBook) && (
+          (!manager || gigBandIds.length > 0) && (
             <>
               {!manager && (
                 <button onClick={() => setSel({ kind: "block" })} className={quietAction}>
                   Block dates
                 </button>
               )}
-              {canBook && (
+              {gigBandIds.length > 0 && (
                 <button onClick={() => setSel({ kind: "gig" })} className={primaryAction}>
                   + Add gig
                 </button>
@@ -113,7 +113,7 @@ export function MemberBoard({
             }
           >
             {view.kind === "day" && pickedDay && pickedDay.others.length > 0 && <Others day={pickedDay} />}
-            {view.kind === "day" && (manager ? canBook : true) && (
+            {view.kind === "day" && (manager ? gigBandIds.length > 0 : true) && (
               <DayForm
                 key={`${view.date}-${pickedDay?.mark?.status}-${pickedDay?.gigs.length}`}
                 personId={personId}
@@ -122,7 +122,7 @@ export function MemberBoard({
                 bands={bands}
                 myBandIds={myBandIds}
                 gigOnly={manager}
-                canBook={canBook}
+                gigBandIds={gigBandIds}
                 onDone={done}
               />
             )}
@@ -135,7 +135,7 @@ export function MemberBoard({
                 myBandIds={myBandIds}
                 start="busy"
                 editableDate
-                canBook={canBook}
+                gigBandIds={gigBandIds}
                 onDone={done}
               />
             )}
@@ -148,7 +148,7 @@ export function MemberBoard({
                 myBandIds={myBandIds}
                 start="gig"
                 gigOnly={manager}
-                canBook={canBook}
+                gigBandIds={gigBandIds}
                 editableDate
                 onDone={done}
               />

@@ -8,10 +8,10 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { canBook, findMe, isManager, landingFor, ME_COOKIE, ME_MAX_AGE } from "@/lib/me";
+import { findMe, gigBandsFor, isManager, landingFor, ME_COOKIE, ME_MAX_AGE } from "@/lib/me";
 import { CLOCK, eachDayOf, ISO_DATE } from "@/lib/dates";
 import { BANDS, PEOPLE } from "@/lib/seed";
-import { addGig, deleteGig, saveGig, saveMark } from "@/lib/store";
+import { addGig, deleteGig, getCalendar, saveGig, saveMark } from "@/lib/store";
 
 const str = (form: FormData, key: string) => {
   const v = form.get(key);
@@ -31,11 +31,22 @@ async function me() {
   return p;
 }
 
-/** Someone who books: adding, editing and cancelling gigs is theirs alone. */
-async function booker() {
+/** Whoever is picked, if they may add or change gigs for this band (see gigBandsFor). */
+async function gigEditor(bandId: string) {
   const p = await me();
-  if (!canBook(p)) throw new Error("Only Adam and Brady can book gigs");
+  const cal = await getCalendar();
+  if (!gigBandsFor(p, cal.bands).includes(bandId)) {
+    const name = BANDS.find((b) => b.id === bandId)?.name ?? "that band";
+    throw new Error(`You can’t add or change ${name} gigs`);
+  }
   return p;
+}
+
+/** The same check, starting from a gig's id. */
+async function gigEditorFor(gigId: string) {
+  const gig = (await getCalendar()).gigs.find((g) => g.id === gigId);
+  if (!gig) throw new Error("That gig no longer exists");
+  return gigEditor(gig.bandId);
 }
 
 /** The person a form is acting for — which must be the person using the app. */
@@ -103,8 +114,8 @@ export async function quickDay(form: FormData): Promise<QuickResult> {
     const mode = str(form, "mode");
 
     if (mode === "gig") {
-      await booker();
       const bandId = band(form);
+      await gigEditor(bandId);
       await addGig(bandId, start, gigDetails(form), personId);
       revalidatePath("/", "layout");
       const name = BANDS.find((b) => b.id === bandId)?.name;
@@ -112,7 +123,8 @@ export async function quickDay(form: FormData): Promise<QuickResult> {
     }
 
     if (mode !== "free" && mode !== "maybe" && mode !== "busy") throw new Error(`Bad choice: ${mode}`);
-    if (isManager(findMe(personId))) throw new Error("The manager books gigs but has no availability to mark");
+    if (isManager(findMe(personId)))
+      throw new Error("The manager books gigs but has no availability to mark");
     const end = optional(form, "endDate") ?? start;
     if (!ISO_DATE.test(end)) throw new Error("Pick an end date");
     if (end < start) throw new Error("The end date is before the start date");
@@ -133,7 +145,7 @@ export async function quickDay(form: FormData): Promise<QuickResult> {
 /** Cancel a gig from the day panel without leaving the calendar. */
 export async function removeGig(form: FormData): Promise<QuickResult> {
   try {
-    await booker();
+    await gigEditorFor(str(form, "id"));
     await deleteGig(str(form, "id"));
     revalidatePath("/", "layout");
     return { ok: true, message: "Gig cancelled" };
@@ -143,8 +155,8 @@ export async function removeGig(form: FormData): Promise<QuickResult> {
 }
 
 export async function updateGigDetails(form: FormData) {
-  await booker();
   const id = str(form, "id");
+  await gigEditorFor(id);
   const url = optional(form, "url");
   if (url && !/^https?:\/\//i.test(url)) throw new Error("Links must start with http:// or https://");
   await saveGig(id, {
@@ -161,8 +173,8 @@ export async function updateGigDetails(form: FormData) {
 }
 
 export async function cancelGig(form: FormData) {
-  await booker();
   const id = str(form, "id");
+  await gigEditorFor(id);
   const back = str(form, "back");
   await deleteGig(id);
   revalidatePath("/", "layout");

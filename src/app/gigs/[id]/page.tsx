@@ -1,8 +1,10 @@
-import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
+import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { cancelGig, updateGigDetails } from "@/app/actions";
 import { BackLink, BandDot, Field, Page, Skeleton, Title, inputClass, primaryButton } from "@/components/ui";
 import { shortDate } from "@/lib/dates";
+import { canBook, findMe, gigBandsFor, landingFor, ME_COOKIE } from "@/lib/me";
 import { getCalendar } from "@/lib/store";
 import { bandOf, personName } from "@/lib/view";
 
@@ -19,17 +21,22 @@ export default function GigPage(props: PageProps<"/gigs/[id]">) {
 async function GigEditor({ params, searchParams }: PageProps<"/gigs/[id]">) {
   const { id } = await params;
   const q = await searchParams;
+  const me = findMe((await cookies()).get(ME_COOKIE)?.value);
+  if (!me) redirect("/");
   const cal = await getCalendar();
   const gig = cal.gigs.find((g) => g.id === id);
   if (!gig) notFound();
+  // Only someone who may edit this band's gigs gets the editor; the rest see details in the panel.
+  if (!gigBandsFor(me, cal.bands).includes(gig.bandId)) redirect(landingFor(me));
 
   const band = bandOf(cal, gig.bandId);
   const members = band?.memberIds.map(personName) ?? [];
-  const back = `/dates?band=${gig.bandId}&month=${gig.date.slice(0, 7)}`;
+  const month = gig.date.slice(0, 7);
+  const back = canBook(me) ? `/dates?month=${month}` : `/m/${me.id}?month=${month}`;
 
   return (
     <>
-      <BackLink href={back} label="Back to dates that work" />
+      <BackLink href={back} label="Back to the calendar" />
       <Title
         sub={
           <span className="flex items-center gap-2">

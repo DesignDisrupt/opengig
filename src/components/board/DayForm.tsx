@@ -33,7 +33,7 @@ export function DayForm({
   start = "pick",
   editableDate = false,
   gigOnly = false,
-  canBook = false,
+  gigBandIds = [],
   initialBandId,
   onDone,
 }: {
@@ -48,7 +48,8 @@ export function DayForm({
   /** Only the Gig option — for the manager, and for booking from Dates that work. */
   gigOnly?: boolean;
   /** Offers the Gig option and gig Edit/Cancel. Only Adam and Brady book. */
-  canBook?: boolean;
+  /** Bands this person may add, edit and cancel gigs for (see gigBandsFor). Empty: no Gig option. */
+  gigBandIds?: string[];
   /** Band picked to start with, e.g. the band being booked. */
   initialBandId?: string;
   onDone: (r: QuickResult) => void;
@@ -56,12 +57,19 @@ export function DayForm({
   const form = useRef<HTMLFormElement>(null);
   const [mode, setMode] = useState<Mode | null>(gigOnly ? "gig" : start === "pick" ? null : start);
   const [note, setNote] = useState(day?.mark?.note ?? "");
-  const [bandId, setBandId] = useState(initialBandId ?? myBandIds[0] ?? bands[0]?.id);
+  // Only bands this person may add gigs for; the band being booked first if allowed.
+  const gigBands = bands.filter((b) => gigBandIds.includes(b.id));
+  const canAddGig = gigBands.length > 0;
+  const [bandId, setBandId] = useState(
+    (initialBandId && gigBandIds.includes(initialBandId) ? initialBandId : undefined) ??
+      gigBands.find((b) => myBandIds.includes(b.id))?.id ??
+      gigBands[0]?.id,
+  );
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string>();
   // What the day is now. A gig outranks the member's own mark, so nothing is "now" then.
   const current: Mode | null = day?.gigs.some((g) => g.mine) ? null : (day?.mark?.status ?? "free");
-  const options = canBook ? OPTIONS : OPTIONS.filter((o) => o.mode !== "gig");
+  const options = canAddGig ? OPTIONS : OPTIONS.filter((o) => o.mode !== "gig");
 
   function submit(overrides: Record<string, string>) {
     if (!form.current) return;
@@ -80,8 +88,8 @@ export function DayForm({
     setMode(m);
   }
 
-  const mine = bands.filter((b) => myBandIds.includes(b.id));
-  const others = bands.filter((b) => !myBandIds.includes(b.id));
+  const mine = gigBands.filter((b) => myBandIds.includes(b.id));
+  const others = gigBands.filter((b) => !myBandIds.includes(b.id));
 
   return (
     <form
@@ -110,10 +118,10 @@ export function DayForm({
       )}
 
       {day && day.gigs.length > 0 && (
-        <ExistingGigs day={day} canBook={canBook} showBusyHint={!gigOnly} onDone={onDone} />
+        <ExistingGigs day={day} gigBandIds={gigBandIds} showBusyHint={!gigOnly} onDone={onDone} />
       )}
 
-      <div className={gigOnly ? "hidden" : `grid gap-2 ${canBook ? "grid-cols-4" : "grid-cols-3"}`}>
+      <div className={gigOnly ? "hidden" : `grid gap-2 ${canAddGig ? "grid-cols-4" : "grid-cols-3"}`}>
         {options.map((o) => {
           const isCurrent = !editableDate && current === o.mode;
           // Selected = the option being filled in, or — before you pick — what the day is now.
@@ -237,12 +245,12 @@ export function DayForm({
 
 function ExistingGigs({
   day,
-  canBook,
+  gigBandIds,
   showBusyHint,
   onDone,
 }: {
   day: MemberDay;
-  canBook: boolean;
+  gigBandIds: string[];
   /** Members only — the manager plays in no band, so "your band" means nothing. */
   showBusyHint: boolean;
   onDone: (r: QuickResult) => void;
@@ -257,7 +265,7 @@ function ExistingGigs({
           className="rounded-2xl border border-line bg-bg p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
         >
           <GigDetails gig={g} aside={g.mine ? undefined : "Not your band"} />
-          {canBook && (
+          {gigBandIds.includes(g.bandId) && (
             <div className="mt-4 flex gap-2 border-t border-line pt-3">
               <Link
                 href={`/gigs/${g.id}`}

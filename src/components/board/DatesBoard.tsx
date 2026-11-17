@@ -70,6 +70,8 @@ export function DatesBoard({
     if (r.ok) setToast(r.message);
     setPicked(null);
   };
+  // Booking Dates is only for Adam and Brady, who may add gigs for every band.
+  const allBandIds = bands.map((b) => b.id);
 
   return (
     <>
@@ -114,7 +116,7 @@ export function DatesBoard({
           >
             {mode === "add" && (
               <DayForm
-                canBook
+                gigBandIds={allBandIds}
                 key="add"
                 personId={personId}
                 date={quickDate}
@@ -129,7 +131,7 @@ export function DatesBoard({
             )}
             {mode === "block" && (
               <DayForm
-                canBook
+                gigBandIds={allBandIds}
                 key="block"
                 personId={personId}
                 date={quickDate}
@@ -230,6 +232,7 @@ function DayDetail({
   myBandIds: string[];
   onDone: (r: QuickResult) => void;
 }) {
+  const allBandIds = bands.map((b) => b.id);
   // A member who plays in the booked gig sees it in "Your day" with Edit/Cancel; don't show it twice.
   // The day's gigs are listed once, with Edit/Cancel, inside the form below
   // (myDay carries every band's gigs), so the summaries above step aside.
@@ -287,7 +290,7 @@ function DayDetail({
               </p>
             )}
             <DayForm
-              canBook
+              gigBandIds={allBandIds}
               key={`${day.date}-${myDay?.gigs.length}`}
               personId={personId}
               date={day.date}
@@ -304,7 +307,7 @@ function DayDetail({
         <>
           <h3 className="mb-3 text-[11px] font-semibold tracking-[0.08em] text-muted uppercase">Your day</h3>
           <DayForm
-            canBook
+            gigBandIds={allBandIds}
             key={`${day.date}-${myDay?.mark?.status}-${myDay?.gigs.length}`}
             personId={personId}
             date={day.date}

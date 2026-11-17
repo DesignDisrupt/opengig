@@ -121,7 +121,11 @@ calendar, and every server action checks the change comes from whoever is
 picked. "Switch" in the header (`/?switch=1`) lets someone else pick.
 
 **Who books (2026-11-16):** only Adam and Brady see Booking Dates and can
-add, edit or cancel gigs. Everyone else sees just My Calendar — every band's
+add, edit or cancel gigs for any band. Every other member can add, edit and
+cancel gigs for every band they play in, WMH included — a gig marks the whole
+band busy and shows on everyone's calendar, so availability is crowd-sourced
+(`gigBandsFor` in `src/lib/me.ts`). Everyone sees every band's gigs on their
+own calendar. Everyone else sees just My Calendar — every band's
 gigs plus everyone else's Maybe and Busy days — and marks their own days.
 JT and Phil are left off the list for now (`PEOPLE` in `src/lib/seed.ts`;
 uncomment to restore). They stay in the database, and their bands' gigs
