@@ -395,12 +395,23 @@ function Cell({
             {day.otherGigs.map((g) => (
               <GigChip key={g.id} color={bandColor(g.bandId)} label={`${g.bandAbbr} booked`} gig={g} />
             ))}
-            {otherOut(day) > 0 && <span className="px-0.5 text-[11px] text-muted">{otherOut(day)} out</span>}
-            {!taken && day.verdict === "maybe" && (
-              <span className="block truncate rounded-md border border-dashed border-fg/30 px-1.5 py-0.5 text-[11px] text-muted">
-                Maybe
+            {/* One line per person: "Brando out", "Mike maybe". Rarely more than two. */}
+            {people(day).map((p) => (
+              <span
+                key={p.name}
+                className="flex min-w-0 items-center gap-1.5 px-0.5 text-[11px] leading-tight text-muted"
+              >
+                <span
+                  aria-hidden
+                  className={`size-2 shrink-0 rounded-full ${
+                    p.maybe ? "border border-dashed border-fg/50" : "bg-faint"
+                  }`}
+                />
+                <span className="truncate">
+                  {p.name} {p.maybe ? "maybe" : "out"}
+                </span>
               </span>
-            )}
+            ))}
           </>
         )}
       </span>
@@ -408,6 +419,11 @@ function Cell({
   );
 }
 
-/** People out for reasons other than another band's gig — those show as "JT booked" instead. */
-const otherOut = (d: BandBoardDay) =>
-  d.out.filter((o) => !o.bandId).reduce((n, o) => n + o.who.split(", ").length, 0);
+/**
+ * Members out (or a maybe) for reasons other than a band gig — gig conflicts
+ * show as "JT booked" chips instead.
+ */
+const people = (d: BandBoardDay) =>
+  d.out
+    .filter((o) => !o.bandId)
+    .flatMap((o) => o.who.split(", ").map((name) => ({ name, maybe: o.why.startsWith("Maybe") })));

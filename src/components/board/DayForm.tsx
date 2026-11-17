@@ -113,8 +113,9 @@ export function DayForm({
 
       <div className={gigOnly ? "hidden" : `grid gap-2 ${canBook ? "grid-cols-4" : "grid-cols-3"}`}>
         {options.map((o) => {
-          const on = mode === o.mode;
           const isCurrent = !editableDate && current === o.mode;
+          // Selected = the option being filled in, or — before you pick — what the day is now.
+          const on = mode ? mode === o.mode : isCurrent;
           return (
             <button
               key={o.mode}
@@ -127,10 +128,8 @@ export function DayForm({
             >
               <OptionMark mode={o.mode} on={on} />
               {o.label}
-              {isCurrent && (
-                <span
-                  className={`absolute top-1.5 right-2 text-[9px] font-semibold tracking-wide uppercase ${on ? "text-bg/60" : "text-muted"}`}
-                >
+              {isCurrent && mode && mode !== o.mode && (
+                <span className="absolute top-1.5 right-2 text-[9px] font-semibold tracking-wide text-muted uppercase">
                   now
                 </span>
               )}
@@ -154,7 +153,12 @@ export function DayForm({
                 key={r}
                 type="button"
                 onClick={() => submit({ mode: "busy", note: r })}
-                className="h-10 rounded-full bg-surface px-4 text-[14px] transition-colors duration-200 hover:bg-fg hover:text-bg"
+                aria-pressed={current === "busy" && day?.mark?.note === r}
+                className={`h-10 rounded-full px-4 text-[14px] transition-colors duration-200 ${
+                  current === "busy" && day?.mark?.note === r
+                    ? "bg-fg font-medium text-bg"
+                    : "bg-surface hover:bg-fg hover:text-bg"
+                }`}
               >
                 {r}
               </button>
