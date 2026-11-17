@@ -37,9 +37,7 @@ export default function Home() {
 
           <Group label="Manager">
             {managers.map((p) => (
-              <NameRow key={p.id} id={p.id} name={p.name} initials={initialsOf(p)}>
-                <span className="text-[13px] text-muted">Books every band</span>
-              </NameRow>
+              <NameRow key={p.id} id={p.id} name={p.name} initials={initialsOf(p)} />
             ))}
           </Group>
         </form>
@@ -68,7 +66,7 @@ function NameRow({
   id: string;
   name: string;
   initials: string;
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }) {
   return (
     <button
