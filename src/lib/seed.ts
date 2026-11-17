@@ -16,7 +16,7 @@ export const PEOPLE: Person[] = [
   { id: "cade", name: "Cade", initials: "CK" },
   // { id: "jt", name: "JT" },
   // { id: "phil", name: "Phil" },
-  { id: "adam", name: "Adam", role: "manager", books: true },
+  { id: "adam", name: "Adam", initials: "AH", role: "manager", books: true },
 ];
 
 export const BANDS: Band[] = [
