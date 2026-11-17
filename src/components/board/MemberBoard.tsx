@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { QuickResult } from "@/app/actions";
 import type { BandOption, MemberDay } from "@/lib/board";
 import { dayOfMonth, longDate, timeRange } from "@/lib/dates";
-import { bandColor } from "@/lib/view";
+import { bandColor, fadedBand } from "@/lib/view";
 import { BoardLayout, primaryAction, quietAction } from "./BoardLayout";
 import { CalendarGrid } from "./CalendarGrid";
 import { GigChip } from "./GigChip";
@@ -237,7 +237,10 @@ function Cell({
 }) {
   // Only your own bands' gigs make you busy; other bands' still list below.
   const gig = day.gigs.find((g) => g.mine);
-  const status = gig ? "gig" : (day.mark?.status ?? "free");
+  // Another band's gig: a whole group is busy that day, so it gets a faded
+  // fill of that band's colour — unless you've marked the day yourself.
+  const otherGig = !gig && !day.mark ? day.gigs.find((g) => !g.mine) : undefined;
+  const status = gig ? "gig" : otherGig ? "other" : (day.mark?.status ?? "free");
   const past = day.date < today;
   const isToday = day.date === today;
 
@@ -245,11 +248,13 @@ function Cell({
   const dot =
     status === "gig"
       ? "font-semibold text-white"
-      : status === "busy"
-        ? "bg-surface text-muted line-through decoration-1"
-        : status === "maybe"
-          ? "border-[1.5px] border-dashed border-fg/45"
-          : "";
+      : status === "other"
+        ? "font-semibold text-fg"
+        : status === "busy"
+          ? "bg-surface text-muted line-through decoration-1"
+          : status === "maybe"
+            ? "border-[1.5px] border-dashed border-fg/45"
+            : "";
 
   return (
     <button
@@ -265,7 +270,13 @@ function Cell({
       {/* phone */}
       <span
         className={`grid size-11 place-items-center rounded-full text-[15px] md:hidden ${dot} ${selected ? "ring-2 ring-fg ring-offset-2 ring-offset-bg" : ""}`}
-        style={gig ? { background: bandColor(gig.bandId) } : undefined}
+        style={
+          gig
+            ? { background: bandColor(gig.bandId) }
+            : otherGig
+              ? { background: fadedBand(otherGig.bandId) }
+              : undefined
+        }
       >
         {dayOfMonth(day.date)}
       </span>

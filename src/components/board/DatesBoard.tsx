@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import type { QuickResult } from "@/app/actions";
 import type { BandBoardDay, BandOption, MemberDay } from "@/lib/board";
 import { dayOfMonth, longDate } from "@/lib/dates";
-import { bandAbbr, bandColor } from "@/lib/view";
+import { bandAbbr, bandColor, fadedBand } from "@/lib/view";
 import { BoardLayout, primaryAction, quietAction } from "./BoardLayout";
 import { CalendarGrid } from "./CalendarGrid";
 import { GigChip } from "./GigChip";
@@ -345,26 +345,40 @@ function Cell({
   // band is playing, is grey: taken, at a glance.
   const taken = !day.booked && (day.verdict === "conflict" || day.otherBooked);
   const open = !past && !day.booked && !taken && day.verdict === "works";
+  // Taken by another band's gig: a whole group is out, so the day wears that
+  // band's colour, faded. Grey is left for individual people being out.
+  const bandTaken = !day.booked && !past ? day.otherGigs[0] : undefined;
 
   const phone = day.booked
     ? "font-semibold text-white"
-    : taken
-      ? "bg-surface text-muted"
-      : day.verdict === "works"
-        ? "bg-ok-tint font-semibold text-ok"
-        : "border-[1.5px] border-dashed border-fg/45";
+    : bandTaken
+      ? "font-semibold text-fg"
+      : taken
+        ? "bg-surface text-muted"
+        : day.verdict === "works"
+          ? "bg-ok-tint font-semibold text-ok"
+          : "border-[1.5px] border-dashed border-fg/45";
 
   return (
     <button
       onClick={onPick}
       aria-pressed={selected}
       aria-label={`${longDate(day.date)}: ${headline(day, "the band")}`}
+      style={
+        bandTaken
+          ? ({
+              "--cell": `color-mix(in srgb, ${bandColor(bandTaken.bandId)} 12%, var(--bg))`,
+            } as CSSProperties)
+          : undefined
+      }
       className={`flex w-full flex-col items-center md:h-full md:min-h-[112px] md:items-stretch md:p-2 md:text-left md:transition-[background-color,box-shadow] md:duration-200 ${
         open
           ? "md:bg-ok-tint/70 md:hover:bg-ok-tint"
-          : taken
-            ? "md:bg-surface md:hover:bg-line/60"
-            : "md:hover:bg-surface/60"
+          : bandTaken
+            ? "md:bg-[var(--cell)] md:hover:brightness-[0.98]"
+            : taken
+              ? "md:bg-surface md:hover:bg-line/60"
+              : "md:hover:bg-surface/60"
       } ${
         selected
           ? "md:shadow-[inset_0_0_0_2px_var(--fg)]"
@@ -375,7 +389,13 @@ function Cell({
     >
       <span
         className={`grid size-11 place-items-center rounded-full text-[15px] md:hidden ${phone} ${selected ? "ring-2 ring-fg ring-offset-2 ring-offset-bg" : ""}`}
-        style={day.booked ? { background: color } : undefined}
+        style={
+          day.booked
+            ? { background: color }
+            : bandTaken
+              ? { background: fadedBand(bandTaken.bandId) }
+              : undefined
+        }
       >
         {dayOfMonth(day.date)}
       </span>

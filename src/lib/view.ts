@@ -11,6 +11,12 @@ const BAND_COLOR: Record<string, string> = {
 };
 export const bandColor = (bandId: string) => BAND_COLOR[bandId] ?? "var(--muted)";
 
+/**
+ * A band's colour faded towards the page — for days another band's gig takes,
+ * so it reads as "a group is busy" without shouting like your own gigs do.
+ */
+export const fadedBand = (bandId: string) => `color-mix(in srgb, ${bandColor(bandId)} 32%, var(--bg))`;
+
 /** Short names for tight spots like the band switcher. */
 const BAND_SHORT: Record<string, string> = {
   "whiskey-mountain-highway": "WMH",
