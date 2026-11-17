@@ -137,7 +137,6 @@ export function DatesBoard({
                 date={quickDate}
                 bands={bands}
                 myBandIds={myBandIds}
-                start="busy"
                 editableDate
                 onDone={done}
               />

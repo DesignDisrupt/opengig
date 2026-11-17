@@ -131,7 +131,8 @@ export async function quickDay(form: FormData): Promise<QuickResult> {
     const days = eachDayOf(start, end);
     if (days.length > MAX_RANGE_DAYS) throw new Error(`That's more than ${MAX_RANGE_DAYS} days`);
 
-    const note = mode === "free" ? undefined : optional(form, "note");
+    // Only Maybe carries a note; a busy day is just busy (Adam, 2026-11-17).
+    const note = mode === "maybe" ? optional(form, "note") : undefined;
     for (const d of days) await saveMark(personId, d, mode, note);
     revalidatePath("/", "layout");
 

@@ -9,13 +9,10 @@ import { GigDetails } from "./GigDetails";
 
 type Mode = "free" | "maybe" | "busy" | "gig";
 
-/** One-tap reasons for Busy. Tapping one saves straight away. */
-const REASONS = ["Work", "Travel", "Family", "Out of town"];
-
 const OPTIONS: { mode: Mode; label: string; hint: string }[] = [
   { mode: "free", label: "Free", hint: "Saves right away" },
   { mode: "maybe", label: "Maybe", hint: "Add a note" },
-  { mode: "busy", label: "Busy", hint: "Pick a reason" },
+  { mode: "busy", label: "Busy", hint: "Saves right away" },
   { mode: "gig", label: "Gig", hint: "Pick the band" },
 ];
 
@@ -84,7 +81,8 @@ export function DayForm({
   }
 
   function pick(m: Mode) {
-    if (m === "free") return submit({ mode: "free" }); // nothing to ask
+    // Free and Busy need nothing more — a busy day is busy, no reason asked.
+    if (m === "free" || m === "busy") return submit({ mode: m });
     setMode(m);
   }
 
@@ -150,32 +148,8 @@ export function DayForm({
 
       {!mode && (
         <p className="mt-3 text-center text-[13px] text-muted">
-          Free saves in one tap. The others ask one more thing.
+          Free and Busy save in one tap. Maybe takes an optional note.
         </p>
-      )}
-
-      {mode === "busy" && (
-        <Section>
-          <p className="mb-2 text-[13px] text-muted">Tap a reason to save</p>
-          <div className="mb-3 flex flex-wrap gap-2">
-            {REASONS.map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => submit({ mode: "busy", note: r })}
-                aria-pressed={current === "busy" && day?.mark?.note === r}
-                className={`h-10 rounded-full px-4 text-[14px] transition-colors duration-200 ${
-                  current === "busy" && day?.mark?.note === r
-                    ? "bg-fg font-medium text-bg"
-                    : "bg-surface hover:bg-fg hover:text-bg"
-                }`}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
-          <NoteAndSave note={note} setNote={setNote} placeholder="Or type a reason" />
-        </Section>
       )}
 
       {mode === "maybe" && (

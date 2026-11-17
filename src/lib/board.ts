@@ -104,10 +104,17 @@ export function memberMonth(
             playing.has(m.personId) &&
             (m.status === "maybe" || m.status === "busy"),
         )
-        .map((m) => ({ name: personName(m.personId), status: m.status as "maybe" | "busy", note: m.note }));
+        .map((m) => ({
+          name: personName(m.personId),
+          status: m.status as "maybe" | "busy",
+          note: m.status === "maybe" ? m.note : undefined, // a busy day is just busy
+        }));
       return {
         date,
-        mark: mark ? { status: mark.status, note: mark.note } : undefined,
+        // Only a Maybe shows its note; any reason saved on a busy day stays hidden.
+        mark: mark
+          ? { status: mark.status, note: mark.status === "maybe" ? mark.note : undefined }
+          : undefined,
         gigs: cal.gigs
           .filter((g) => g.date === date)
           .map((g) => ({ ...chip(cal, g), mine: manager || myBands.has(g.bandId) })),

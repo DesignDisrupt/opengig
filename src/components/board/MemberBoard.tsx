@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { QuickResult } from "@/app/actions";
 import type { BandOption, MemberDay } from "@/lib/board";
-import { dayOfMonth, longDate } from "@/lib/dates";
+import { dayOfMonth, longDate, timeRange } from "@/lib/dates";
 import { bandColor } from "@/lib/view";
 import { BoardLayout, primaryAction, quietAction } from "./BoardLayout";
 import { CalendarGrid } from "./CalendarGrid";
@@ -133,7 +133,6 @@ export function MemberBoard({
                 date={quickDate}
                 bands={bands}
                 myBandIds={myBandIds}
-                start="busy"
                 editableDate
                 gigBandIds={gigBandIds}
                 onDone={done}
@@ -185,7 +184,7 @@ export function MemberBoard({
           ))}
         </div>
 
-        {/* This month, as a list — mainly for phones */}
+        {/* This month, as an agenda — mainly for phones, where cells are too small for details */}
         <section className="mt-10 lg:hidden">
           <h3 className="mb-2 text-[11px] font-semibold tracking-[0.08em] text-muted uppercase">
             This month
@@ -197,19 +196,12 @@ export function MemberBoard({
           ) : (
             <div className="divide-y divide-line border-y border-line">
               {marked.map((d) => (
-                <button
+                <AgendaRow
                   key={d.date}
-                  onClick={() => setSel({ kind: "day", date: d.date })}
-                  className="flex w-full items-center gap-4 py-3.5 text-left"
-                >
-                  <span className="w-20 shrink-0 text-[14px] font-medium">{shortLabel(d.date)}</span>
-                  <span className="min-w-0 flex-1 truncate text-[14px] text-muted">
-                    {[describeDay(d, manager, true), ...d.others.map(otherLabel)].filter(Boolean).join(" · ")}
-                  </span>
-                  <span aria-hidden className="text-faint">
-                    ›
-                  </span>
-                </button>
+                  day={d}
+                  today={today}
+                  onPick={() => setSel({ kind: "day", date: d.date })}
+                />
               ))}
             </div>
           )}
@@ -293,7 +285,7 @@ function Cell({
         ))}
         {!gig && day.mark?.status === "busy" && (
           <span className="truncate rounded-md bg-surface px-1.5 py-1 text-[11px] leading-tight text-muted">
-            {day.mark.note || "Busy"}
+            Busy
           </span>
         )}
         {!gig && day.mark?.status === "maybe" && (
@@ -320,6 +312,87 @@ function Cell({
   );
 }
 
+/**
+ * One day in the phone agenda: a date tile, then each gig in full (band, time,
+ * venue), then your own Busy/Maybe and anyone else who's out. Tap to open it.
+ */
+function AgendaRow({ day, today, onPick }: { day: MemberDay; today: string; onPick: () => void }) {
+  const d = new Date(`${day.date}T00:00:00Z`);
+  const mon = d.toLocaleString("en-US", { month: "short", timeZone: "UTC" }).toUpperCase();
+  const wd = d.toLocaleString("en-US", { weekday: "short", timeZone: "UTC" });
+  const mine = day.gigs.find((g) => g.mine);
+  const isToday = day.date === today;
+
+  return (
+    <button
+      onClick={onPick}
+      className={`flex w-full items-start gap-4 py-4 text-left ${day.date < today ? "opacity-50" : ""}`}
+    >
+      <span className="flex w-11 shrink-0 flex-col items-center pt-0.5 leading-none">
+        <span
+          className="text-[10px] font-semibold tracking-[0.06em]"
+          style={{ color: mine ? bandColor(mine.bandId) : "var(--muted)" }}
+        >
+          {mon}
+        </span>
+        <span
+          className={`mt-1 grid size-8 place-items-center rounded-full text-[18px] font-semibold tracking-tight ${
+            isToday ? "bg-fg text-bg" : ""
+          }`}
+        >
+          {d.getUTCDate()}
+        </span>
+        <span className="mt-0.5 text-[10px] text-muted">{wd}</span>
+      </span>
+
+      <span className="min-w-0 flex-1 space-y-2">
+        {day.gigs.map((g) => (
+          <span
+            key={g.id}
+            className="block rounded-xl border border-line bg-bg px-3 py-2.5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+          >
+            <span className="flex items-center gap-2">
+              <span
+                aria-hidden
+                className="size-2 shrink-0 rounded-full"
+                style={{ background: bandColor(g.bandId) }}
+              />
+              <span className="truncate text-[14px] font-semibold">{g.bandName}</span>
+              {!g.mine && <span className="shrink-0 text-[11px] text-muted">not your band</span>}
+            </span>
+            <span className="mt-0.5 block pl-4 text-[13px] text-muted">
+              {[timeRange(g.startTime, g.endTime), g.venue].filter(Boolean).join(" · ") || "Details to come"}
+            </span>
+            {g.address && <span className="block truncate pl-4 text-[12px] text-faint">{g.address}</span>}
+          </span>
+        ))}
+
+        {!mine && day.mark && day.mark.status !== "free" && (
+          <span className="flex items-center gap-2 text-[14px]">
+            <OtherMark status={day.mark.status} />
+            <span className="font-medium">You’re {day.mark.status === "busy" ? "busy" : "a maybe"}</span>
+            {day.mark.note && <span className="truncate text-muted">· {day.mark.note}</span>}
+          </span>
+        )}
+
+        {day.others.map((o) => (
+          <span key={o.name} className="flex items-center gap-2 text-[13px] text-muted">
+            <OtherMark status={o.status} />
+            <span>
+              {o.name} {o.status === "busy" ? "busy" : "maybe"}
+              {o.note ? ` · ${o.note}` : ""}
+            </span>
+          </span>
+        ))}
+      </span>
+
+      <span aria-hidden className="pt-1 text-faint">
+        ›
+      </span>
+    </button>
+  );
+}
+
 /** Your day in words. `quiet` drops a plain "Free" so lists only say what matters. */
 function describeDay(d?: MemberDay, manager = false, quiet = false): string {
   const mine = d?.gigs.filter((g) => g.mine) ?? [];
@@ -336,8 +409,6 @@ function describeDay(d?: MemberDay, manager = false, quiet = false): string {
   const label = { free: "Free", maybe: "Maybe", busy: "Busy" }[d.mark.status];
   return d.mark.note ? `${label} · ${d.mark.note}` : label;
 }
-
-const otherLabel = (o: MemberDay["others"][number]) => `${o.name} ${o.status}${o.note ? ` (${o.note})` : ""}`;
 
 function OtherMark({ status }: { status: "maybe" | "busy" }) {
   return status === "maybe" ? (
@@ -367,11 +438,3 @@ function Others({ day }: { day: MemberDay }) {
     </div>
   );
 }
-
-const shortLabel = (date: string) =>
-  new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", {
-    timeZone: "UTC",
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });

@@ -44,7 +44,8 @@ export function describe(cal: Calendar, day: PersonDay): string {
     return `Gig with ${names.join(" + ")}`;
   }
   const label = { free: "Free", maybe: "Maybe", busy: "Busy" }[day.status];
-  return day.reason === "self" && day.note ? `${label} — ${day.note}` : label;
+  // Only a Maybe shows its note; a busy day is just busy.
+  return day.reason === "self" && day.status === "maybe" && day.note ? `${label} — ${day.note}` : label;
 }
 
 /** "8:00 PM – 12:00 AM · The Roadhouse", or "Details to come" for a bare hold. */
