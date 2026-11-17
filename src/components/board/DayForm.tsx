@@ -109,7 +109,9 @@ export function DayForm({
         </div>
       )}
 
-      {day && day.gigs.length > 0 && <ExistingGigs day={day} canBook={canBook} onDone={onDone} />}
+      {day && day.gigs.length > 0 && (
+        <ExistingGigs day={day} canBook={canBook} showBusyHint={!gigOnly} onDone={onDone} />
+      )}
 
       <div className={gigOnly ? "hidden" : `grid gap-2 ${canBook ? "grid-cols-4" : "grid-cols-3"}`}>
         {options.map((o) => {
@@ -236,10 +238,13 @@ export function DayForm({
 function ExistingGigs({
   day,
   canBook,
+  showBusyHint,
   onDone,
 }: {
   day: MemberDay;
   canBook: boolean;
+  /** Members only — the manager plays in no band, so "your band" means nothing. */
+  showBusyHint: boolean;
   onDone: (r: QuickResult) => void;
 }) {
   const [pending, startTransition] = useTransition();
@@ -283,7 +288,7 @@ function ExistingGigs({
           )}
         </div>
       ))}
-      {day.gigs.some((g) => g.mine) && (
+      {showBusyHint && day.gigs.some((g) => g.mine) && (
         <p className="px-1 text-[12px] text-muted">A gig with your band keeps the day busy.</p>
       )}
     </div>

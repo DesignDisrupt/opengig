@@ -5,6 +5,7 @@ import type { QuickResult } from "@/app/actions";
 import type { BandOption, MemberDay } from "@/lib/board";
 import { dayOfMonth, longDate } from "@/lib/dates";
 import { bandColor } from "@/lib/view";
+import { BoardLayout, primaryAction, quietAction } from "./BoardLayout";
 import { CalendarGrid } from "./CalendarGrid";
 import { GigChip } from "./GigChip";
 import { DayForm } from "./DayForm";
@@ -67,42 +68,94 @@ export function MemberBoard({
   const marked = days.filter((d) => d.gigs.length || d.mark || d.others.length);
 
   return (
-    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-10">
-      <div>
-        {/* Title row: name, quick actions */}
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-[28px] leading-tight font-semibold tracking-[-0.02em] lg:text-[34px]">
-              {personName}
-            </h1>
-            <p className="mt-1 text-[15px] text-muted">
-              {manager
-                ? "Every band’s gigs. Pick a day to add one."
-                : "Every day is free. Tap one to change it. Everyone’s gigs and plans show too."}
-            </p>
-          </div>
-          <div className="flex w-full gap-2 sm:w-auto">
-            {!manager && (
-              <button
-                onClick={() => setSel({ kind: "block" })}
-                className={`${action} bg-surface hover:bg-line`}
-              >
-                Block dates
-              </button>
+    <>
+      <BoardLayout
+        title={personName}
+        summary={
+          manager
+            ? "Every band’s gigs. Pick a day to add one."
+            : "Every day is free. Tap one to change it. Everyone’s gigs and plans show too."
+        }
+        actions={
+          (!manager || canBook) && (
+            <>
+              {!manager && (
+                <button onClick={() => setSel({ kind: "block" })} className={quietAction}>
+                  Block dates
+                </button>
+              )}
+              {canBook && (
+                <button onClick={() => setSel({ kind: "gig" })} className={primaryAction}>
+                  + Add gig
+                </button>
+              )}
+            </>
+          )
+        }
+        monthBar={<MonthBar month={month} prevHref={prevHref} nextHref={nextHref} todayHref={todayHref} />}
+        panel={
+          <Panel
+            sheetOpen={sel !== null}
+            onClose={close}
+            title={
+              view.kind === "day"
+                ? `${view.date === today ? "Today · " : ""}${longDate(view.date).replace(/, \d{4}$/, "")}`
+                : view.kind === "gig"
+                  ? "Add a gig"
+                  : "Block dates"
+            }
+            sub={
+              view.kind === "day"
+                ? describeDay(pickedDay, manager)
+                : view.kind === "block"
+                  ? "One day or a stretch of them."
+                  : "Details are optional."
+            }
+          >
+            {view.kind === "day" && pickedDay && pickedDay.others.length > 0 && <Others day={pickedDay} />}
+            {view.kind === "day" && (manager ? canBook : true) && (
+              <DayForm
+                key={`${view.date}-${pickedDay?.mark?.status}-${pickedDay?.gigs.length}`}
+                personId={personId}
+                date={view.date}
+                day={pickedDay}
+                bands={bands}
+                myBandIds={myBandIds}
+                gigOnly={manager}
+                canBook={canBook}
+                onDone={done}
+              />
             )}
-            {canBook && (
-              <button
-                onClick={() => setSel({ kind: "gig" })}
-                className={`${action} bg-fg text-bg hover:opacity-85`}
-              >
-                + Add gig
-              </button>
+            {view.kind === "block" && (
+              <DayForm
+                key="block"
+                personId={personId}
+                date={quickDate}
+                bands={bands}
+                myBandIds={myBandIds}
+                start="busy"
+                editableDate
+                canBook={canBook}
+                onDone={done}
+              />
             )}
-          </div>
-        </div>
-
-        <MonthBar month={month} prevHref={prevHref} nextHref={nextHref} todayHref={todayHref} />
-
+            {view.kind === "gig" && (
+              <DayForm
+                key="gig"
+                personId={personId}
+                date={quickDate}
+                bands={bands}
+                myBandIds={myBandIds}
+                start="gig"
+                gigOnly={manager}
+                canBook={canBook}
+                editableDate
+                onDone={done}
+              />
+            )}
+          </Panel>
+        }
+      >
         <CalendarGrid
           weeks={weeks}
           cell={(d) => (
@@ -161,68 +214,7 @@ export function MemberBoard({
             </div>
           )}
         </section>
-      </div>
-
-      <Panel
-        sheetOpen={sel !== null}
-        onClose={close}
-        title={
-          view.kind === "day"
-            ? `${view.date === today ? "Today · " : ""}${longDate(view.date).replace(/, \d{4}$/, "")}`
-            : view.kind === "gig"
-              ? "Add a gig"
-              : "Block dates"
-        }
-        sub={
-          view.kind === "day"
-            ? describeDay(pickedDay, manager)
-            : view.kind === "block"
-              ? "One day or a stretch of them."
-              : "Details are optional."
-        }
-      >
-        {view.kind === "day" && pickedDay && pickedDay.others.length > 0 && <Others day={pickedDay} />}
-        {view.kind === "day" && (manager ? canBook : true) && (
-          <DayForm
-            key={`${view.date}-${pickedDay?.mark?.status}-${pickedDay?.gigs.length}`}
-            personId={personId}
-            date={view.date}
-            day={pickedDay}
-            bands={bands}
-            myBandIds={myBandIds}
-            gigOnly={manager}
-            canBook={canBook}
-            onDone={done}
-          />
-        )}
-        {view.kind === "block" && (
-          <DayForm
-            key="block"
-            personId={personId}
-            date={quickDate}
-            bands={bands}
-            myBandIds={myBandIds}
-            start="busy"
-            editableDate
-            canBook={canBook}
-            onDone={done}
-          />
-        )}
-        {view.kind === "gig" && (
-          <DayForm
-            key="gig"
-            personId={personId}
-            date={quickDate}
-            bands={bands}
-            myBandIds={myBandIds}
-            start="gig"
-            gigOnly={manager}
-            canBook={canBook}
-            editableDate
-            onDone={done}
-          />
-        )}
-      </Panel>
+      </BoardLayout>
 
       {toast && (
         <div role="status" className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-5">
@@ -231,7 +223,7 @@ export function MemberBoard({
           </span>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -383,6 +375,3 @@ const shortLabel = (date: string) =>
     month: "short",
     day: "numeric",
   });
-
-const action =
-  "inline-flex h-11 flex-1 items-center justify-center rounded-full px-5 text-[14px] font-medium whitespace-nowrap transition-colors duration-200 sm:flex-none";

@@ -135,7 +135,7 @@ every band's gigs in one calendar.
 |-------|---------------|
 | `/` | Pick your name (members, then the manager) |
 | `/m/[person]` | **My Calendar.** The side panel opens on today; **Block dates** and **+ Add gig** up top |
-| `/dates` | **Booking Dates** — one calendar per band; click a day to see who's out, mark **Your day**, or book it. **Block dates** and **+ Add gig** up top |
+| `/dates` | **Booking Dates** — the WMH scheduler (no band switcher). Click a day to see who's out, mark **Your day**, book WMH, or add another band's gig to block the day for its WMH members. **Block dates** and **+ Add gig** up top |
 | `/gigs/[id]` | A gig's details (all optional), and cancel |
 
 The header's **My Calendar / Booking Dates** toggle switches between the two.
