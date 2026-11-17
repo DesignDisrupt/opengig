@@ -1,6 +1,7 @@
 import { chooseMe } from "@/app/actions";
 import { BrandMark } from "@/components/Brand";
 import { BandDot } from "@/components/ui";
+import { initialsOf } from "@/lib/me";
 import { BANDS, PEOPLE } from "@/lib/seed";
 
 /**
@@ -24,7 +25,7 @@ export default function Home() {
         <form action={chooseMe} className="space-y-6">
           <Group label="Band members">
             {players.map((p) => (
-              <NameRow key={p.id} id={p.id} name={p.name}>
+              <NameRow key={p.id} id={p.id} name={p.name} initials={initialsOf(p)}>
                 <span className="flex gap-1">
                   {BANDS.filter((b) => b.memberIds.includes(p.id)).map((b) => (
                     <BandDot key={b.id} bandId={b.id} />
@@ -36,7 +37,7 @@ export default function Home() {
 
           <Group label="Manager">
             {managers.map((p) => (
-              <NameRow key={p.id} id={p.id} name={p.name}>
+              <NameRow key={p.id} id={p.id} name={p.name} initials={initialsOf(p)}>
                 <span className="text-[13px] text-muted">Books every band</span>
               </NameRow>
             ))}
@@ -58,7 +59,17 @@ function Group({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function NameRow({ id, name, children }: { id: string; name: string; children: React.ReactNode }) {
+function NameRow({
+  id,
+  name,
+  initials,
+  children,
+}: {
+  id: string;
+  name: string;
+  initials: string;
+  children: React.ReactNode;
+}) {
   return (
     <button
       type="submit"
@@ -67,7 +78,7 @@ function NameRow({ id, name, children }: { id: string; name: string; children: R
       className="group flex w-full items-center gap-3.5 px-4 py-3 text-left transition-colors duration-200 hover:bg-surface/70"
     >
       <span className="grid size-9 place-items-center rounded-full bg-surface text-[13px] font-semibold transition-colors duration-200 group-hover:bg-fg group-hover:text-bg">
-        {name.slice(0, 2)}
+        {initials}
       </span>
       <span className="flex-1 text-[15px] font-medium">{name}</span>
       {children}

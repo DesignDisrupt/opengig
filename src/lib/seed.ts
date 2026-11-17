@@ -9,11 +9,11 @@ import type { Band, Gig, Mark, Person } from "./types";
  * back, uncomment the two lines.
  */
 export const PEOPLE: Person[] = [
-  { id: "brady", name: "Brady", books: true },
-  { id: "jacob", name: "Jacob" },
-  { id: "mike", name: "Mike" },
-  { id: "brando", name: "Brando" },
-  { id: "cade", name: "Cade" },
+  { id: "brady", name: "Brady", initials: "BH", books: true },
+  { id: "jacob", name: "Jacob", initials: "JT" },
+  { id: "mike", name: "Mike", initials: "MB" },
+  { id: "brando", name: "Brando", initials: "BM" },
+  { id: "cade", name: "Cade", initials: "CK" },
   // { id: "jt", name: "JT" },
   // { id: "phil", name: "Phil" },
   { id: "adam", name: "Adam", role: "manager", books: true },

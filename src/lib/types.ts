@@ -14,6 +14,8 @@ export interface Person {
   role?: "manager";
   /** Can use Booking Dates and add, edit or cancel gigs. The manager always can. */
   books?: boolean;
+  /** What the avatar shows, e.g. "BH". Falls back to the first two letters of the name. */
+  initials?: string;
 }
 
 export interface Band {

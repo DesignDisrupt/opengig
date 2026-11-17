@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { canBook, findMe, ME_COOKIE } from "@/lib/me";
+import { canBook, findMe, initialsOf, ME_COOKIE } from "@/lib/me";
 import { ViewToggle } from "./ViewToggle";
 
 /**
@@ -22,7 +22,7 @@ export async function HeaderNav() {
         className="flex items-center gap-2 rounded-full bg-surface p-1 text-[13px] font-medium transition-colors duration-200 hover:bg-line md:pr-3"
       >
         <span className="grid size-8 place-items-center rounded-full bg-fg text-[11px] font-semibold text-bg">
-          {me.name.slice(0, 2)}
+          {initialsOf(me)}
         </span>
         <span className="hidden md:inline">
           {me.name} <span className="font-normal text-muted">· Switch</span>

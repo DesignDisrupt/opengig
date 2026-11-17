@@ -15,6 +15,9 @@ export const ME_MAX_AGE = 60 * 60 * 24 * 365;
 export const findMe = (id: string | undefined): Person | undefined =>
   id ? PEOPLE.find((p) => p.id === id) : undefined;
 
+/** The avatar's letters: set per person, else the first two of the name. */
+export const initialsOf = (p: Person) => p.initials ?? p.name.slice(0, 2);
+
 export const isManager = (p: Person | undefined) => p?.role === "manager";
 
 /** Booking Dates and gig editing are for the people who book: Adam and Brady. */
