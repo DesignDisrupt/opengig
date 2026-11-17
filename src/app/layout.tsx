@@ -21,6 +21,8 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "OpenGig",
   description: "Mark your availability; find dates that work for the whole band.",
+  // Private to the band — never in search results.
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
