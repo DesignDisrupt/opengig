@@ -117,10 +117,17 @@ three bands' gigs.
 | Route | What it's for |
 |-------|---------------|
 | `/` | Pick your name; upcoming gigs by month |
-| `/m/[person]` | Your month — tap a day to change it |
-| `/m/[person]/[date]` | Free / Maybe / Busy; Busy asks "a gig with one of your bands, or something else?" |
-| `/dates` | Dates that work — opens on WMH, switch band, "Open dates" or "Every day", Book |
+| `/m/[person]` | Your calendar. Click a day for the day panel; **Block dates** and **+ Add gig** up top |
+| `/dates` | Dates that work — Calendar (default), Open dates or Every day; switch band; click a day to see who's out and Book |
 | `/gigs/[id]` | A gig's details (all optional), and cancel |
+
+**The day panel** (side column on desktop, bottom sheet on phones) offers
+Free (saves in one tap), Maybe (with a note), Busy (tap a reason — Work,
+Travel, Family, Out of town — or type one) and Gig (pick the band; time,
+venue, address, link and notes under "More details"). A day that already has
+a gig lists it with Edit and Cancel; Cancel asks "Sure?" first because it
+frees the day for the whole band. **Block dates** takes a From and an
+optional To, up to 62 days.
 
 Design: minimal, phone-first, patterned on Mobbin references (Peerspace /
 Tonal / Monzo calendars, Revolut and Luma segmented controls, Lightyear and
@@ -142,6 +149,8 @@ can be tried before Neon exists; changes there reset when the server restarts.
     src/lib/store.ts         Neon when DATABASE_URL is set, in-memory seed otherwise
     src/app/actions.ts       the server actions every form posts to
     src/components/ui.tsx    shared pieces: segmented control, date tile, rows, buttons
+    src/components/board/    the client calendars and the day panel
+    src/lib/board.ts         month data the calendars draw, worked out on the server
     src/lib/availability.ts  day resolution, the per-band verdict, and the changes
                              (setMark, markBusy, updateGig, removeGig)
 

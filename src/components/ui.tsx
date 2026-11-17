@@ -3,8 +3,15 @@ import type { ReactNode } from "react";
 import { addMonths, monthLabel } from "@/lib/dates";
 import { bandColor } from "@/lib/view";
 
-export function Page({ children }: { children: ReactNode }) {
-  return <main className="mx-auto w-full max-w-md flex-1 px-5 pt-6 pb-20">{children}</main>;
+/** Narrow for forms and lists; `wide` for the calendar workspaces on desktop. */
+export function Page({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
+  return (
+    <main
+      className={`mx-auto w-full flex-1 px-5 pt-6 pb-20 ${wide ? "max-w-md md:max-w-7xl md:px-8 lg:pt-10" : "max-w-md md:pt-10"}`}
+    >
+      {children}
+    </main>
+  );
 }
 
 export function Title({ children, sub }: { children: ReactNode; sub?: ReactNode }) {

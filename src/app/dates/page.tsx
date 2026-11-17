@@ -2,7 +2,9 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { bookDate } from "@/app/actions";
 import { DateTile, MonthNav, Page, Rows, Segmented, Skeleton, Title } from "@/components/ui";
+import { DatesBoard } from "@/components/board/DatesBoard";
 import { bandRange, type Calendar } from "@/lib/availability";
+import { bandMonth } from "@/lib/board";
 import { ISO_MONTH, monthBounds, monthLabel, shortDate, todayISO } from "@/lib/dates";
 import { DEFAULT_BAND_ID } from "@/lib/seed";
 import { getCalendar } from "@/lib/store";
@@ -11,7 +13,7 @@ import { bandColor, bandOf, bandShort, describe, gigSummary, personName } from "
 
 export default function DatesPage(props: PageProps<"/dates">) {
   return (
-    <Page>
+    <Page wide>
       <Title>Dates that work</Title>
       <Suspense fallback={<Skeleton className="h-[480px]" />}>
         <Dates {...props} />
@@ -20,7 +22,8 @@ export default function DatesPage(props: PageProps<"/dates">) {
   );
 }
 
-type Show = "open" | "all";
+/** Calendar is the default; the two lists are the earlier phone-first views. */
+type Show = "calendar" | "open" | "all";
 
 async function Dates({ searchParams }: PageProps<"/dates">) {
   const q = await searchParams;
@@ -30,7 +33,7 @@ async function Dates({ searchParams }: PageProps<"/dates">) {
   const bandId =
     typeof q.band === "string" && cal.bands.some((b) => b.id === q.band) ? q.band : DEFAULT_BAND_ID;
   const month = typeof q.month === "string" && ISO_MONTH.test(q.month) ? q.month : today.slice(0, 7);
-  const show: Show = q.show === "all" ? "all" : "open";
+  const show: Show = q.show === "all" || q.show === "open" ? q.show : "calendar";
   const href = (o: { band?: string; month?: string; show?: Show }) =>
     `/dates?band=${o.band ?? bandId}&month=${o.month ?? month}&show=${o.show ?? show}`;
 
@@ -45,20 +48,35 @@ async function Dates({ searchParams }: PageProps<"/dates">) {
 
   return (
     <>
-      <Segmented
-        className="mb-8"
-        items={cal.bands.map((b) => ({
-          key: b.id,
-          href: href({ band: b.id }),
-          active: b.id === bandId,
-          label: (
-            <>
-              <span className="size-1.5 rounded-full" style={{ background: bandColor(b.id) }} />
-              {bandShort(b.id)}
-            </>
-          ),
-        }))}
-      />
+      <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <Segmented
+          className="md:w-[420px]"
+          items={cal.bands.map((b) => ({
+            key: b.id,
+            href: href({ band: b.id }),
+            active: b.id === bandId,
+            label: (
+              <>
+                <span className="size-1.5 rounded-full" style={{ background: bandColor(b.id) }} />
+                {bandShort(b.id)}
+              </>
+            ),
+          }))}
+        />
+        <Segmented
+          className="md:w-[340px]"
+          items={[
+            {
+              key: "calendar",
+              href: href({ show: "calendar" }),
+              active: show === "calendar",
+              label: "Calendar",
+            },
+            { key: "open", href: href({ show: "open" }), active: show === "open", label: "Open dates" },
+            { key: "all", href: href({ show: "all" }), active: show === "all", label: "Every day" },
+          ]}
+        />
+      </div>
 
       <MonthNav month={month} href={(m) => href({ month: m })} />
       <p className="mb-5 text-[15px] text-muted">
@@ -75,30 +93,41 @@ async function Dates({ searchParams }: PageProps<"/dates">) {
         )}
       </p>
 
-      <Segmented
-        className="mb-4"
-        items={[
-          { key: "open", href: href({ show: "open" }), active: show === "open", label: "Open dates" },
-          { key: "all", href: href({ show: "all" }), active: show === "all", label: "Every day" },
-        ]}
-      />
-
-      {visible.length === 0 ? (
+      {show === "calendar" ? (
+        <DatesBoard
+          weeks={bandMonth(cal, bandId, month)}
+          today={today}
+          bandId={bandId}
+          bandName={band?.name ?? ""}
+        />
+      ) : visible.length === 0 ? (
         <p className="py-10 text-center text-[15px] text-muted">
           {end < today ? "" : `No open dates in ${monthLabel(month)}.`}
         </p>
       ) : (
-        <Rows>
-          {visible.map((d) => (
-            <DayRow key={d.date} cal={cal} day={d} bandId={bandId} booked={booked(d)} />
-          ))}
-        </Rows>
+        <div className="max-w-2xl">
+          <Rows>
+            {visible.map((d) => (
+              <DayRow key={d.date} cal={cal} day={d} bandId={bandId} booked={booked(d)} />
+            ))}
+          </Rows>
+        </div>
       )}
     </>
   );
 }
 
-function DayRow({ cal, day, bandId, booked }: { cal: Calendar; day: BandDay; bandId: string; booked: Gig[] }) {
+function DayRow({
+  cal,
+  day,
+  bandId,
+  booked,
+}: {
+  cal: Calendar;
+  day: BandDay;
+  bandId: string;
+  booked: Gig[];
+}) {
   if (booked.length) {
     return (
       <Link
@@ -110,7 +139,9 @@ function DayRow({ cal, day, bandId, booked }: { cal: Calendar; day: BandDay; ban
           <span className="block text-[15px] font-medium">Booked</span>
           <span className="block truncate text-[13px] text-muted">{gigSummary(booked[0])}</span>
         </span>
-        <span aria-hidden className="pr-1 text-faint">›</span>
+        <span aria-hidden className="pr-1 text-faint">
+          ›
+        </span>
       </Link>
     );
   }

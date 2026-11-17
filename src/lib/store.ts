@@ -151,9 +151,14 @@ export async function saveBusy(
   return gig;
 }
 
-/** Book a band on a day from the manager view — a gig with no creator. */
-export async function addGig(bandId: string, date: ISODate): Promise<Gig> {
-  const gig: Gig = { id: crypto.randomUUID(), bandId, date };
+/** Add a gig for a band — from "Book", "Add gig" or a day's Gig option. */
+export async function addGig(
+  bandId: string,
+  date: ISODate,
+  details: Omit<GigDetails, "date"> = {},
+  createdBy?: PersonId,
+): Promise<Gig> {
+  const gig: Gig = { id: crypto.randomUUID(), bandId, date, ...details, createdBy };
   if (!usingDatabase) {
     const cal = memory();
     if (!cal.bands.some((b) => b.id === bandId)) throw new Error(`Unknown band: ${bandId}`);
@@ -162,7 +167,18 @@ export async function addGig(bandId: string, date: ISODate): Promise<Gig> {
   }
   const db = await database();
   const { gigs } = await schema();
-  await db.insert(gigs).values({ id: gig.id, bandId, date });
+  await db.insert(gigs).values({
+    id: gig.id,
+    bandId,
+    date,
+    startTime: gig.startTime ?? null,
+    endTime: gig.endTime ?? null,
+    venue: gig.venue ?? null,
+    address: gig.address ?? null,
+    url: gig.url ?? null,
+    note: gig.note ?? null,
+    createdBy: createdBy ?? null,
+  });
   return gig;
 }
 

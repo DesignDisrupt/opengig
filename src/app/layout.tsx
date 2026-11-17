@@ -27,7 +27,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         <header className="sticky top-0 z-20 bg-bg/85 backdrop-blur-md">
-          <nav className="mx-auto flex h-14 max-w-md items-center justify-between px-5">
+          <nav className="mx-auto flex h-14 max-w-7xl items-center justify-between px-5 md:px-8">
             <Link href="/" className="text-[15px] font-semibold tracking-tight">
               Gig Calendar
             </Link>

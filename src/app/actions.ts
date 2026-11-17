@@ -6,9 +6,9 @@
  */
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { CLOCK, ISO_DATE } from "@/lib/dates";
+import { CLOCK, eachDayOf, ISO_DATE } from "@/lib/dates";
 import { BANDS, PEOPLE } from "@/lib/seed";
-import { addGig, deleteGig, saveBusy, saveGig, saveMark } from "@/lib/store";
+import { addGig, deleteGig, saveGig, saveMark } from "@/lib/store";
 
 const str = (form: FormData, key: string) => {
   const v = form.get(key);
@@ -37,28 +37,73 @@ function clock(form: FormData, key: string) {
   return v;
 }
 
-/** A member's day editor: Free / Maybe / Busy (Other or one of their bands). */
-export async function saveDay(form: FormData) {
-  const personId = person(form);
-  const day = date(form);
-  const status = str(form, "status");
-  const note = optional(form, "note");
+export type QuickResult = { ok: true; message: string } | { ok: false; error: string };
 
-  if (status === "free" || status === "maybe") {
-    await saveMark(personId, day, status, note);
-  } else if (status === "busy") {
-    const reason = str(form, "reason");
-    if (reason === "other") {
-      await saveBusy(personId, day, { kind: "other", note });
-    } else {
-      await saveBusy(personId, day, { kind: "band", bandId: band(form, "reason") });
+/** Longest stretch "Block dates" will mark in one go — a tour, not a typo'd year. */
+const MAX_RANGE_DAYS = 62;
+
+function gigDetails(form: FormData) {
+  const url = optional(form, "url");
+  if (url && !/^https?:\/\//i.test(url)) throw new Error("Links must start with http:// or https://");
+  return {
+    startTime: clock(form, "startTime"),
+    endTime: clock(form, "endTime"),
+    venue: optional(form, "venue"),
+    address: optional(form, "address"),
+    url,
+    note: optional(form, "gigNote"),
+  };
+}
+
+/**
+ * The day panel and the two quick actions all post here.
+ *
+ * mode free | maybe | busy — the member's own mark, for one day or a range
+ *                            (`endDate`), with an optional reason in `note`.
+ * mode gig                 — a gig for `bandId` on `date`, details optional.
+ *                            Every member of that band is busy that day.
+ */
+export async function quickDay(form: FormData): Promise<QuickResult> {
+  try {
+    const personId = person(form);
+    const start = date(form);
+    const mode = str(form, "mode");
+
+    if (mode === "gig") {
+      const bandId = band(form);
+      await addGig(bandId, start, gigDetails(form), personId);
+      revalidatePath("/", "layout");
+      const name = BANDS.find((b) => b.id === bandId)?.name;
+      return { ok: true, message: `Gig added for ${name}` };
     }
-  } else {
-    throw new Error(`Bad status: ${status}`);
-  }
 
-  revalidatePath("/", "layout");
-  redirect(`/m/${personId}?month=${day.slice(0, 7)}`);
+    if (mode !== "free" && mode !== "maybe" && mode !== "busy") throw new Error(`Bad choice: ${mode}`);
+    const end = optional(form, "endDate") ?? start;
+    if (!ISO_DATE.test(end)) throw new Error("Pick an end date");
+    if (end < start) throw new Error("The end date is before the start date");
+    const days = eachDayOf(start, end);
+    if (days.length > MAX_RANGE_DAYS) throw new Error(`That's more than ${MAX_RANGE_DAYS} days`);
+
+    const note = mode === "free" ? undefined : optional(form, "note");
+    for (const d of days) await saveMark(personId, d, mode, note);
+    revalidatePath("/", "layout");
+
+    const what = { free: "Free", maybe: "Maybe", busy: "Blocked" }[mode];
+    return { ok: true, message: days.length > 1 ? `${what} · ${days.length} days` : `${what}` };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Something went wrong" };
+  }
+}
+
+/** Cancel a gig from the day panel without leaving the calendar. */
+export async function removeGig(form: FormData): Promise<QuickResult> {
+  try {
+    await deleteGig(str(form, "id"));
+    revalidatePath("/", "layout");
+    return { ok: true, message: "Gig cancelled" };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Something went wrong" };
+  }
 }
 
 /** Book a band on a date from the "dates that work" view. */
