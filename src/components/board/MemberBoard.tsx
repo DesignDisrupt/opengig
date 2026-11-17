@@ -1,13 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import type { QuickResult } from "@/app/actions";
 import type { BandOption, MemberDay } from "@/lib/board";
-import { dayOfMonth, longDate, monthLabel } from "@/lib/dates";
+import { dayOfMonth, longDate } from "@/lib/dates";
 import { bandColor } from "@/lib/view";
 import { CalendarGrid, GigChip } from "./CalendarGrid";
 import { DayForm } from "./DayForm";
+import { MonthBar } from "./MonthBar";
 import { Panel } from "./Panel";
 
 type Selection = { kind: "day"; date: string } | { kind: "block" } | { kind: "gig" } | null;
@@ -88,21 +88,7 @@ export function MemberBoard({
           </div>
         </div>
 
-        {/* Month bar */}
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-[18px] font-semibold tracking-tight lg:text-[20px]">{monthLabel(month)}</h2>
-          <div className="flex items-center gap-1">
-            <Link href={todayHref} scroll={false} className="mr-1 rounded-full px-3 py-1.5 text-[13px] font-medium text-muted transition-colors duration-200 hover:bg-surface hover:text-fg">
-              Today
-            </Link>
-            <Link href={prevHref} scroll={false} aria-label="Previous month" className={arrow}>
-              ‹
-            </Link>
-            <Link href={nextHref} scroll={false} aria-label="Next month" className={arrow}>
-              ›
-            </Link>
-          </div>
-        </div>
+        <MonthBar month={month} prevHref={prevHref} nextHref={nextHref} todayHref={todayHref} />
 
         <CalendarGrid
           weeks={weeks}
@@ -310,5 +296,3 @@ const shortLabel = (date: string) =>
 
 const action =
   "inline-flex h-11 flex-1 items-center justify-center rounded-full px-5 text-[14px] font-medium whitespace-nowrap transition-colors duration-200 sm:flex-none";
-const arrow =
-  "grid size-9 place-items-center rounded-full text-lg text-muted transition-colors duration-200 hover:bg-surface hover:text-fg";

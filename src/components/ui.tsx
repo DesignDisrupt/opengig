@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { addMonths, monthLabel } from "@/lib/dates";
 import { bandColor } from "@/lib/view";
 
 /** Narrow for forms and lists; `wide` for the calendar workspaces on desktop. */
@@ -67,25 +66,6 @@ export function Segmented({
           {it.label}
         </Link>
       ))}
-    </div>
-  );
-}
-
-/** "December 2026" on the left, ‹ › on the right. */
-export function MonthNav({ month, href }: { month: string; href: (month: string) => string }) {
-  const arrow =
-    "grid size-9 place-items-center rounded-full text-lg text-muted transition-colors duration-200 hover:bg-surface hover:text-fg";
-  return (
-    <div className="mb-2 flex items-center justify-between">
-      <h2 className="text-[17px] font-semibold tracking-tight">{monthLabel(month)}</h2>
-      <div className="flex gap-1">
-        <Link href={href(addMonths(month, -1))} className={arrow} aria-label="Previous month">
-          ‹
-        </Link>
-        <Link href={href(addMonths(month, 1))} className={arrow} aria-label="Next month">
-          ›
-        </Link>
-      </div>
     </div>
   );
 }

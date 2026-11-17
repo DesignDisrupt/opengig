@@ -2,10 +2,11 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { DatesBoard } from "@/components/board/DatesBoard";
-import { MonthNav, Page, Segmented, Skeleton, Title } from "@/components/ui";
+import { MonthBar } from "@/components/board/MonthBar";
+import { Page, Segmented, Skeleton, Title } from "@/components/ui";
 import { bandRange } from "@/lib/availability";
 import { bandMonth, memberMonth } from "@/lib/board";
-import { ISO_MONTH, monthBounds, todayISO } from "@/lib/dates";
+import { addMonths, ISO_MONTH, monthBounds, todayISO } from "@/lib/dates";
 import { findMe, isManager, ME_COOKIE } from "@/lib/me";
 import { DEFAULT_BAND_ID } from "@/lib/seed";
 import { getCalendar } from "@/lib/store";
@@ -74,7 +75,12 @@ async function Dates({ searchParams }: PageProps<"/dates">) {
       }
       monthBar={
         <>
-          <MonthNav month={month} href={(m) => href({ month: m })} />
+          <MonthBar
+            month={month}
+            prevHref={href({ month: addMonths(month, -1) })}
+            nextHref={href({ month: addMonths(month, 1) })}
+            todayHref={href({ month: today.slice(0, 7) })}
+          />
           <p className="mb-5 text-[15px] text-muted">
             {end < today ? (
               "This month has passed."
