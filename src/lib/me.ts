@@ -17,5 +17,8 @@ export const findMe = (id: string | undefined): Person | undefined =>
 
 export const isManager = (p: Person | undefined) => p?.role === "manager";
 
+/** Booking Dates and gig editing are for the people who book: Adam and Brady. */
+export const canBook = (p: Person | undefined) => isManager(p) || !!p?.books;
+
 /** Where you land after picking your name: your calendar, or the booking view for the manager. */
 export const landingFor = (p: Person) => (isManager(p) ? "/dates" : `/m/${p.id}`);

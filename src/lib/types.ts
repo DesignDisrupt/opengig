@@ -12,6 +12,8 @@ export interface Person {
    * availability never counts toward "dates that work".
    */
   role?: "manager";
+  /** Can use Booking Dates and add, edit or cancel gigs. The manager always can. */
+  books?: boolean;
 }
 
 export interface Band {

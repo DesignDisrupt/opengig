@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { findMe, ME_COOKIE } from "@/lib/me";
+import { canBook, findMe, ME_COOKIE } from "@/lib/me";
 import { ViewToggle } from "./ViewToggle";
 
 /**
@@ -14,7 +14,7 @@ export async function HeaderNav() {
 
   return (
     <div className="flex items-center gap-2">
-      <ViewToggle meId={me.id} />
+      {canBook(me) && <ViewToggle meId={me.id} />}
       <Link
         href="/?switch=1"
         title={`${me.name} — not you? Switch`}

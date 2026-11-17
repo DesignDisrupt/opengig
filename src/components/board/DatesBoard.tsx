@@ -6,10 +6,11 @@ import type { QuickResult } from "@/app/actions";
 import type { BandBoardDay, BandOption, MemberDay } from "@/lib/board";
 import { dayOfMonth, longDate } from "@/lib/dates";
 import { bandAbbr, bandColor } from "@/lib/view";
-import { CalendarGrid, GigChip } from "./CalendarGrid";
+import { CalendarGrid } from "./CalendarGrid";
+import { GigChip } from "./GigChip";
 import { DayForm } from "./DayForm";
+import { GigDetails } from "./GigDetails";
 import { Panel } from "./Panel";
-
 
 /**
  * Booking Dates: a month grid of which days work for a band (green works,
@@ -108,10 +109,12 @@ export function DatesBoard({
               <span className="size-2.5 rounded-full border border-dashed border-fg/50" /> Someone’s a maybe
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full" style={{ background: bandColor(bandId) }} /> {bandAbbr(bandId)} booked
+              <span className="size-2.5 rounded-full" style={{ background: bandColor(bandId) }} />{" "}
+              {bandAbbr(bandId)} booked
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full bg-surface ring-1 ring-line" /> Someone’s out or another band plays
+              <span className="size-2.5 rounded-full bg-surface ring-1 ring-line" /> Someone’s out or another
+              band plays
             </span>
           </div>
         </div>
@@ -140,6 +143,7 @@ export function DatesBoard({
         >
           {mode === "add" && (
             <DayForm
+              canBook
               key="add"
               personId={personId}
               date={quickDate}
@@ -154,6 +158,7 @@ export function DatesBoard({
           )}
           {mode === "block" && (
             <DayForm
+              canBook
               key="block"
               personId={personId}
               date={quickDate}
@@ -183,7 +188,9 @@ export function DatesBoard({
 
       {toast && (
         <div role="status" className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-5">
-          <span className="rounded-full bg-fg px-5 py-2.5 text-[14px] font-medium text-bg shadow-lg">✓ {toast}</span>
+          <span className="rounded-full bg-fg px-5 py-2.5 text-[14px] font-medium text-bg shadow-lg">
+            ✓ {toast}
+          </span>
         </div>
       )}
     </>
@@ -227,17 +234,15 @@ function DayDetail({
   return (
     <div>
       {day.booked && !bookedShownBelow && (
-        <Link
-          href={`/gigs/${day.booked.id}`}
-          className="mb-5 flex items-center gap-3 rounded-2xl bg-surface py-3 pr-4 pl-3 transition-colors duration-200 hover:bg-line"
-        >
-          <span className="h-9 w-1 rounded-full" style={{ background: bandColor(bandId) }} />
-          <span className="min-w-0 flex-1">
-            <span className="block text-[15px] font-medium">Gig · {bandName}</span>
-            <span className="block truncate text-[13px] text-muted">{day.booked.summary}</span>
-          </span>
-          <span className="text-[13px] text-muted">Open ›</span>
-        </Link>
+        <div className="mb-5 rounded-2xl border border-line bg-bg p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+          <GigDetails gig={day.booked} />
+          <Link
+            href={`/gigs/${day.booked.id}`}
+            className="mt-4 block rounded-full bg-surface py-2 text-center text-[13px] font-medium transition-colors duration-200 hover:bg-line"
+          >
+            Edit details
+          </Link>
+        </div>
       )}
 
       {day.out.length === 0 && day.otherBooked && (
@@ -257,7 +262,9 @@ function DayDetail({
             <div key={o.why} className="px-4 py-3">
               <p className="text-[15px] font-medium">{o.who}</p>
               <p className="flex items-center gap-1.5 text-[13px] text-muted">
-                {o.bandId && <span className="size-2 rounded-full" style={{ background: bandColor(o.bandId) }} />}
+                {o.bandId && (
+                  <span className="size-2 rounded-full" style={{ background: bandColor(o.bandId) }} />
+                )}
                 {o.why}
               </p>
             </div>
@@ -270,9 +277,11 @@ function DayDetail({
         !past && (
           <>
             <p className="mb-3 text-[13px] text-muted">
-              {day.verdict === "conflict" ? "Book anyway" : "Book it"} — {bandName} is picked; details are optional.
+              {day.verdict === "conflict" ? "Book anyway" : "Book it"} — {bandName} is picked; details are
+              optional.
             </p>
             <DayForm
+              canBook
               key={day.date}
               personId={personId}
               date={day.date}
@@ -288,6 +297,7 @@ function DayDetail({
         <>
           <h3 className="mb-3 text-[11px] font-semibold tracking-[0.08em] text-muted uppercase">Your day</h3>
           <DayForm
+            canBook
             key={`${day.date}-${myDay?.mark?.status}-${myDay?.gigs.length}`}
             personId={personId}
             date={day.date}
@@ -367,21 +377,25 @@ function Cell({
 
       <span
         className={`hidden size-7 place-items-center rounded-full text-[14px] md:grid ${
-          isToday ? "bg-fg font-semibold text-bg" : open ? "font-semibold text-ok" : taken ? "font-medium text-muted" : "font-medium"
+          isToday
+            ? "bg-fg font-semibold text-bg"
+            : open
+              ? "font-semibold text-ok"
+              : taken
+                ? "font-medium text-muted"
+                : "font-medium"
         }`}
       >
         {dayOfMonth(day.date)}
       </span>
       <span className="mt-1.5 hidden min-w-0 flex-col gap-1 md:flex">
-        {day.booked && <GigChip color={color} label={`${day.booked.bandAbbr} booked`} />}
+        {day.booked && <GigChip color={color} label={`${day.booked.bandAbbr} booked`} gig={day.booked} />}
         {!day.booked && !past && (
           <>
-            {day.otherBandIds.map((id) => (
-              <GigChip key={id} color={bandColor(id)} label={`${bandAbbr(id)} booked`} />
+            {day.otherGigs.map((g) => (
+              <GigChip key={g.id} color={bandColor(g.bandId)} label={`${g.bandAbbr} booked`} gig={g} />
             ))}
-            {otherOut(day) > 0 && (
-              <span className="px-0.5 text-[11px] text-muted">{otherOut(day)} out</span>
-            )}
+            {otherOut(day) > 0 && <span className="px-0.5 text-[11px] text-muted">{otherOut(day)} out</span>}
             {!taken && day.verdict === "maybe" && (
               <span className="block truncate rounded-md border border-dashed border-fg/30 px-1.5 py-0.5 text-[11px] text-muted">
                 Maybe

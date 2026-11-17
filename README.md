@@ -120,6 +120,13 @@ hasn't picked back to the picker. A member only ever sees and edits their own
 calendar, and every server action checks the change comes from whoever is
 picked. "Switch" in the header (`/?switch=1`) lets someone else pick.
 
+**Who books (2026-11-16):** only Adam and Brady see Booking Dates and can
+add, edit or cancel gigs. Everyone else sees just My Calendar — every band's
+gigs plus everyone else's Maybe and Busy days — and marks their own days.
+JT and Phil are left off the list for now (`PEOPLE` in `src/lib/seed.ts`;
+uncomment to restore). They stay in the database, and their bands' gigs
+still show.
+
 **Adam is the manager** — on no roster, so his availability never counts. He
 lands on Booking Dates and can add a gig for any band; his My Calendar is
 every band's gigs in one calendar.

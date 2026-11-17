@@ -5,6 +5,7 @@ import { useRef, useState, useTransition, type ReactNode } from "react";
 import { quickDay, removeGig, type QuickResult } from "@/app/actions";
 import type { BandOption, MemberDay } from "@/lib/board";
 import { bandColor } from "@/lib/view";
+import { GigDetails } from "./GigDetails";
 
 type Mode = "free" | "maybe" | "busy" | "gig";
 
@@ -32,6 +33,7 @@ export function DayForm({
   start = "pick",
   editableDate = false,
   gigOnly = false,
+  canBook = false,
   initialBandId,
   onDone,
 }: {
@@ -45,6 +47,8 @@ export function DayForm({
   editableDate?: boolean;
   /** Only the Gig option — for the manager, and for booking from Dates that work. */
   gigOnly?: boolean;
+  /** Offers the Gig option and gig Edit/Cancel. Only Adam and Brady book. */
+  canBook?: boolean;
   /** Band picked to start with, e.g. the band being booked. */
   initialBandId?: string;
   onDone: (r: QuickResult) => void;
@@ -56,7 +60,8 @@ export function DayForm({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string>();
   // What the day is now. A gig outranks the member's own mark, so nothing is "now" then.
-  const current: Mode | null = day?.gigs.length ? null : (day?.mark?.status ?? "free");
+  const current: Mode | null = day?.gigs.some((g) => g.mine) ? null : (day?.mark?.status ?? "free");
+  const options = canBook ? OPTIONS : OPTIONS.filter((o) => o.mode !== "gig");
 
   function submit(overrides: Record<string, string>) {
     if (!form.current) return;
@@ -104,10 +109,10 @@ export function DayForm({
         </div>
       )}
 
-      {day && day.gigs.length > 0 && <ExistingGigs day={day} onDone={onDone} />}
+      {day && day.gigs.length > 0 && <ExistingGigs day={day} canBook={canBook} onDone={onDone} />}
 
-      <div className={gigOnly ? "hidden" : "grid grid-cols-4 gap-2"}>
-        {OPTIONS.map((o) => {
+      <div className={gigOnly ? "hidden" : `grid gap-2 ${canBook ? "grid-cols-4" : "grid-cols-3"}`}>
+        {options.map((o) => {
           const on = mode === o.mode;
           const isCurrent = !editableDate && current === o.mode;
           return (
@@ -123,7 +128,9 @@ export function DayForm({
               <OptionMark mode={o.mode} on={on} />
               {o.label}
               {isCurrent && (
-                <span className={`absolute top-1.5 right-2 text-[9px] font-semibold tracking-wide uppercase ${on ? "text-bg/60" : "text-muted"}`}>
+                <span
+                  className={`absolute top-1.5 right-2 text-[9px] font-semibold tracking-wide uppercase ${on ? "text-bg/60" : "text-muted"}`}
+                >
                   now
                 </span>
               )}
@@ -165,7 +172,12 @@ export function DayForm({
 
       {mode === "gig" && (
         <Section>
-          <BandPicker label={others.length && mine.length ? "Your bands" : "Band"} bands={mine.length ? mine : others} value={bandId} onChange={setBandId} />
+          <BandPicker
+            label={others.length && mine.length ? "Your bands" : "Band"}
+            bands={mine.length ? mine : others}
+            value={bandId}
+            onChange={setBandId}
+          />
           {mine.length > 0 && others.length > 0 && (
             <BandPicker label="Other bands" bands={others} value={bandId} onChange={setBandId} />
           )}
@@ -199,7 +211,12 @@ export function DayForm({
                 <input type="url" name="url" placeholder="https://" className={inputOnSurface} />
               </Label>
               <Label text="Notes">
-                <textarea name="gigNote" rows={2} placeholder="Load-in, set length, pay…" className={`${inputOnSurface} resize-none`} />
+                <textarea
+                  name="gigNote"
+                  rows={2}
+                  placeholder="Load-in, set length, pay…"
+                  className={`${inputOnSurface} resize-none`}
+                />
               </Label>
             </div>
           </details>
@@ -212,43 +229,59 @@ export function DayForm({
   );
 }
 
-function ExistingGigs({ day, onDone }: { day: MemberDay; onDone: (r: QuickResult) => void }) {
+function ExistingGigs({
+  day,
+  canBook,
+  onDone,
+}: {
+  day: MemberDay;
+  canBook: boolean;
+  onDone: (r: QuickResult) => void;
+}) {
   const [pending, startTransition] = useTransition();
   const [confirming, setConfirming] = useState<string | null>(null);
   return (
     <div className="mb-5 space-y-2">
       {day.gigs.map((g) => (
-        <div key={g.id} className="flex items-center gap-3 rounded-2xl bg-surface py-3 pr-2 pl-3">
-          <span className="h-9 w-1 shrink-0 rounded-full" style={{ background: bandColor(g.bandId) }} />
-          <Link href={`/gigs/${g.id}`} className="min-w-0 flex-1">
-            <span className="block truncate text-[15px] font-medium">Gig · {g.bandName}</span>
-            <span className="block truncate text-[13px] text-muted">{g.summary}</span>
-          </Link>
-          <Link href={`/gigs/${g.id}`} className="rounded-full px-3 py-1.5 text-[13px] text-muted hover:bg-line hover:text-fg">
-            Edit
-          </Link>
-          {/* Two clicks: cancelling frees the day for a whole band. */}
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => {
-              if (confirming !== g.id) return setConfirming(g.id);
-              startTransition(async () => {
-                const fd = new FormData();
-                fd.set("id", g.id);
-                onDone(await removeGig(fd));
-              });
-            }}
-            onBlur={() => setConfirming(null)}
-            className={`rounded-full px-3 py-1.5 text-[13px] transition-colors duration-200 ${
-              confirming === g.id ? "bg-danger font-medium text-white" : "text-danger hover:bg-line"
-            }`}
-          >
-            {confirming === g.id ? "Sure?" : "Cancel"}
-          </button>
+        <div
+          key={g.id}
+          className="rounded-2xl border border-line bg-bg p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+        >
+          <GigDetails gig={g} aside={g.mine ? undefined : "Not your band"} />
+          {canBook && (
+            <div className="mt-4 flex gap-2 border-t border-line pt-3">
+              <Link
+                href={`/gigs/${g.id}`}
+                className="flex-1 rounded-full bg-surface py-2 text-center text-[13px] font-medium transition-colors duration-200 hover:bg-line"
+              >
+                Edit details
+              </Link>
+              {/* Two clicks: cancelling frees the day for a whole band. */}
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => {
+                  if (confirming !== g.id) return setConfirming(g.id);
+                  startTransition(async () => {
+                    const fd = new FormData();
+                    fd.set("id", g.id);
+                    onDone(await removeGig(fd));
+                  });
+                }}
+                onBlur={() => setConfirming(null)}
+                className={`flex-1 rounded-full py-2 text-[13px] font-medium transition-colors duration-200 ${
+                  confirming === g.id ? "bg-danger text-white" : "text-danger hover:bg-surface"
+                }`}
+              >
+                {confirming === g.id ? "Sure? Cancel gig" : "Cancel gig"}
+              </button>
+            </div>
+          )}
         </div>
       ))}
-      <p className="px-1 text-[12px] text-muted">A gig keeps the day busy until it’s cancelled.</p>
+      {day.gigs.some((g) => g.mine) && (
+        <p className="px-1 text-[12px] text-muted">A gig with your band keeps the day busy.</p>
+      )}
     </div>
   );
 }
@@ -293,9 +326,12 @@ function BandPicker({
 
 function OptionMark({ mode, on }: { mode: Mode; on: boolean }) {
   const ink = on ? "var(--bg)" : "var(--fg)";
-  if (mode === "free") return <span className="size-3 rounded-full border-[1.5px]" style={{ borderColor: ink }} />;
-  if (mode === "maybe") return <span className="size-3 rounded-full border-[1.5px] border-dashed" style={{ borderColor: ink }} />;
-  if (mode === "busy") return <span className="size-3 rounded-full" style={{ background: on ? "var(--bg)" : "var(--faint)" }} />;
+  if (mode === "free")
+    return <span className="size-3 rounded-full border-[1.5px]" style={{ borderColor: ink }} />;
+  if (mode === "maybe")
+    return <span className="size-3 rounded-full border-[1.5px] border-dashed" style={{ borderColor: ink }} />;
+  if (mode === "busy")
+    return <span className="size-3 rounded-full" style={{ background: on ? "var(--bg)" : "var(--faint)" }} />;
   return <span className="text-[13px] leading-3">♪</span>;
 }
 
@@ -318,7 +354,10 @@ function NoteAndSave({
         maxLength={140}
         className={`${input} flex-1`}
       />
-      <button type="submit" className="h-[50px] shrink-0 rounded-2xl bg-fg px-5 text-[15px] font-medium text-bg transition-opacity duration-200 hover:opacity-85">
+      <button
+        type="submit"
+        className="h-[50px] shrink-0 rounded-2xl bg-fg px-5 text-[15px] font-medium text-bg transition-opacity duration-200 hover:opacity-85"
+      >
         Save
       </button>
     </div>

@@ -5,13 +5,13 @@ import type { QuickResult } from "@/app/actions";
 import type { BandOption, MemberDay } from "@/lib/board";
 import { dayOfMonth, longDate } from "@/lib/dates";
 import { bandColor } from "@/lib/view";
-import { CalendarGrid, GigChip } from "./CalendarGrid";
+import { CalendarGrid } from "./CalendarGrid";
+import { GigChip } from "./GigChip";
 import { DayForm } from "./DayForm";
 import { MonthBar } from "./MonthBar";
 import { Panel } from "./Panel";
 
 type Selection = { kind: "day"; date: string } | { kind: "block" } | { kind: "gig" } | null;
-
 
 export function MemberBoard({
   personId,
@@ -20,6 +20,7 @@ export function MemberBoard({
   today,
   weeks,
   manager = false,
+  canBook = false,
   bands,
   myBandIds,
   prevHref,
@@ -33,6 +34,8 @@ export function MemberBoard({
   weeks: (MemberDay | null)[][];
   /** The manager's calendar: every band's gigs, and the panel only adds gigs. */
   manager?: boolean;
+  /** Adam and Brady: + Add gig, the Gig option and gig Edit/Cancel. */
+  canBook?: boolean;
   bands: BandOption[];
   myBandIds: string[];
   prevHref: string;
@@ -61,7 +64,7 @@ export function MemberBoard({
   // With nothing picked, the desktop panel shows today (or the 1st of another month).
   const view: NonNullable<Selection> = sel ?? { kind: "day", date: quickDate };
   const pickedDay = view.kind === "day" ? days.find((d) => d.date === view.date) : undefined;
-  const marked = days.filter((d) => d.gigs.length || d.mark);
+  const marked = days.filter((d) => d.gigs.length || d.mark || d.others.length);
 
   return (
     <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-10">
@@ -73,18 +76,28 @@ export function MemberBoard({
               {personName}
             </h1>
             <p className="mt-1 text-[15px] text-muted">
-              {manager ? "Every band’s gigs. Pick a day to add one." : "Every day is free. Tap one to change it."}
+              {manager
+                ? "Every band’s gigs. Pick a day to add one."
+                : "Every day is free. Tap one to change it. Everyone’s gigs and plans show too."}
             </p>
           </div>
           <div className="flex w-full gap-2 sm:w-auto">
             {!manager && (
-              <button onClick={() => setSel({ kind: "block" })} className={`${action} bg-surface hover:bg-line`}>
+              <button
+                onClick={() => setSel({ kind: "block" })}
+                className={`${action} bg-surface hover:bg-line`}
+              >
                 Block dates
               </button>
             )}
-            <button onClick={() => setSel({ kind: "gig" })} className={`${action} bg-fg text-bg hover:opacity-85`}>
-              + Add gig
-            </button>
+            {canBook && (
+              <button
+                onClick={() => setSel({ kind: "gig" })}
+                className={`${action} bg-fg text-bg hover:opacity-85`}
+              >
+                + Add gig
+              </button>
+            )}
           </div>
         </div>
 
@@ -106,16 +119,12 @@ export function MemberBoard({
 
         {/* Key */}
         <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 text-[12px] text-muted">
-          {!manager && (
-            <>
-              <span className="flex items-center gap-1.5">
-                <span className="size-2.5 rounded-full border border-dashed border-fg/50" /> Maybe
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="size-2.5 rounded-full bg-faint" /> Busy
-              </span>
-            </>
-          )}
+          <span className="flex items-center gap-1.5">
+            <span className="size-2.5 rounded-full border border-dashed border-fg/50" /> Maybe
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="size-2.5 rounded-full bg-faint" /> Busy
+          </span>
           {bands.map((b) => (
             <span key={b.id} className="flex items-center gap-1.5">
               <span className="size-2.5 rounded-full" style={{ background: bandColor(b.id) }} /> {b.short}
@@ -125,9 +134,13 @@ export function MemberBoard({
 
         {/* This month, as a list — mainly for phones */}
         <section className="mt-10 lg:hidden">
-          <h3 className="mb-2 text-[11px] font-semibold tracking-[0.08em] text-muted uppercase">This month</h3>
+          <h3 className="mb-2 text-[11px] font-semibold tracking-[0.08em] text-muted uppercase">
+            This month
+          </h3>
           {marked.length === 0 ? (
-            <p className="py-3 text-[15px] text-muted">{manager ? "No gigs this month." : "Free all month."}</p>
+            <p className="py-3 text-[15px] text-muted">
+              {manager ? "No gigs this month." : "Free all month."}
+            </p>
           ) : (
             <div className="divide-y divide-line border-y border-line">
               {marked.map((d) => (
@@ -137,8 +150,12 @@ export function MemberBoard({
                   className="flex w-full items-center gap-4 py-3.5 text-left"
                 >
                   <span className="w-20 shrink-0 text-[14px] font-medium">{shortLabel(d.date)}</span>
-                  <span className="min-w-0 flex-1 truncate text-[14px] text-muted">{describeDay(d)}</span>
-                  <span aria-hidden className="text-faint">›</span>
+                  <span className="min-w-0 flex-1 truncate text-[14px] text-muted">
+                    {[describeDay(d, manager, true), ...d.others.map(otherLabel)].filter(Boolean).join(" · ")}
+                  </span>
+                  <span aria-hidden className="text-faint">
+                    ›
+                  </span>
                 </button>
               ))}
             </div>
@@ -164,7 +181,8 @@ export function MemberBoard({
               : "Details are optional."
         }
       >
-        {view.kind === "day" && (
+        {view.kind === "day" && pickedDay && pickedDay.others.length > 0 && <Others day={pickedDay} />}
+        {view.kind === "day" && (manager ? canBook : true) && (
           <DayForm
             key={`${view.date}-${pickedDay?.mark?.status}-${pickedDay?.gigs.length}`}
             personId={personId}
@@ -173,11 +191,22 @@ export function MemberBoard({
             bands={bands}
             myBandIds={myBandIds}
             gigOnly={manager}
+            canBook={canBook}
             onDone={done}
           />
         )}
         {view.kind === "block" && (
-          <DayForm key="block" personId={personId} date={quickDate} bands={bands} myBandIds={myBandIds} start="busy" editableDate onDone={done} />
+          <DayForm
+            key="block"
+            personId={personId}
+            date={quickDate}
+            bands={bands}
+            myBandIds={myBandIds}
+            start="busy"
+            editableDate
+            canBook={canBook}
+            onDone={done}
+          />
         )}
         {view.kind === "gig" && (
           <DayForm
@@ -188,6 +217,7 @@ export function MemberBoard({
             myBandIds={myBandIds}
             start="gig"
             gigOnly={manager}
+            canBook={canBook}
             editableDate
             onDone={done}
           />
@@ -196,7 +226,9 @@ export function MemberBoard({
 
       {toast && (
         <div role="status" className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-5">
-          <span className="rounded-full bg-fg px-5 py-2.5 text-[14px] font-medium text-bg shadow-lg">✓ {toast}</span>
+          <span className="rounded-full bg-fg px-5 py-2.5 text-[14px] font-medium text-bg shadow-lg">
+            ✓ {toast}
+          </span>
         </div>
       )}
     </div>
@@ -219,7 +251,8 @@ function Cell({
   focused: boolean;
   onPick: () => void;
 }) {
-  const gig = day.gigs[0];
+  // Only your own bands' gigs make you busy; other bands' still list below.
+  const gig = day.gigs.find((g) => g.mine);
   const status = gig ? "gig" : (day.mark?.status ?? "free");
   const past = day.date < today;
   const isToday = day.date === today;
@@ -264,7 +297,7 @@ function Cell({
       </span>
       <span className="mt-1.5 hidden flex-col gap-1 md:flex">
         {day.gigs.map((g) => (
-          <GigChip key={g.id} color={bandColor(g.bandId)} label={`${g.bandAbbr} booked`} />
+          <GigChip key={g.id} color={bandColor(g.bandId)} label={`${g.bandAbbr} booked`} gig={g} />
         ))}
         {!gig && day.mark?.status === "busy" && (
           <span className="truncate rounded-md bg-surface px-1.5 py-1 text-[11px] leading-tight text-muted">
@@ -276,23 +309,80 @@ function Cell({
             Maybe{day.mark.note ? ` · ${day.mark.note}` : ""}
           </span>
         )}
+        {day.others.slice(0, 2).map((o) => (
+          <span
+            key={o.name}
+            className="flex min-w-0 items-center gap-1.5 px-0.5 text-[11px] leading-tight text-muted"
+          >
+            <OtherMark status={o.status} />
+            <span className="truncate">
+              {o.name} {o.status}
+            </span>
+          </span>
+        ))}
+        {day.others.length > 2 && (
+          <span className="px-0.5 text-[11px] text-faint">+{day.others.length - 2} more</span>
+        )}
       </span>
     </button>
   );
 }
 
-function describeDay(d?: MemberDay, manager = false): string {
-  if (d?.gigs.length) return d.gigs.map((g) => `Gig · ${g.bandName}`).join(" + ");
-  if (manager) return "No gigs";
-  if (!d) return "Free";
-  if (!d.mark) return "Free";
+/** Your day in words. `quiet` drops a plain "Free" so lists only say what matters. */
+function describeDay(d?: MemberDay, manager = false, quiet = false): string {
+  const mine = d?.gigs.filter((g) => g.mine) ?? [];
+  if (mine.length) return mine.map((g) => `${g.bandAbbr} booked`).join(" + ");
+  const others = d?.gigs.filter((g) => !g.mine) ?? [];
+  if (manager)
+    return others.length ? others.map((g) => `${g.bandAbbr} booked`).join(" + ") : quiet ? "" : "No gigs";
+  if (!d?.mark) {
+    const free = quiet ? "" : "Free";
+    return others.length
+      ? [free, ...others.map((g) => `${g.bandAbbr} booked`)].filter(Boolean).join(" · ")
+      : free;
+  }
   const label = { free: "Free", maybe: "Maybe", busy: "Busy" }[d.mark.status];
   return d.mark.note ? `${label} · ${d.mark.note}` : label;
 }
 
-const shortLabel = (date: string) =>
-  new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" });
+const otherLabel = (o: MemberDay["others"][number]) => `${o.name} ${o.status}${o.note ? ` (${o.note})` : ""}`;
 
+function OtherMark({ status }: { status: "maybe" | "busy" }) {
+  return status === "maybe" ? (
+    <span aria-hidden className="size-2 shrink-0 rounded-full border border-dashed border-fg/50" />
+  ) : (
+    <span aria-hidden className="size-2 shrink-0 rounded-full bg-faint" />
+  );
+}
+
+/** Who else marked this day, in the panel above your own choices. */
+function Others({ day }: { day: MemberDay }) {
+  return (
+    <div className="mb-5">
+      <h3 className="mb-2 text-[11px] font-semibold tracking-[0.08em] text-muted uppercase">Others</h3>
+      <div className="divide-y divide-line rounded-2xl bg-surface">
+        {day.others.map((o) => (
+          <div key={o.name} className="flex items-center gap-2.5 px-4 py-2.5">
+            <OtherMark status={o.status} />
+            <span className="text-[14px] font-medium">{o.name}</span>
+            <span className="min-w-0 flex-1 truncate text-[13px] text-muted">
+              {o.status === "busy" ? "Busy" : "Maybe"}
+              {o.note ? ` · ${o.note}` : ""}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const shortLabel = (date: string) =>
+  new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", {
+    timeZone: "UTC",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
 
 const action =
   "inline-flex h-11 flex-1 items-center justify-center rounded-full px-5 text-[14px] font-medium whitespace-nowrap transition-colors duration-200 sm:flex-none";

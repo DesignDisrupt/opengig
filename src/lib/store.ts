@@ -15,7 +15,7 @@ import {
   setMark as setMarkPure,
   updateGig as updateGigPure,
 } from "./availability";
-import { BANDS, GIGS, MARKS } from "./seed";
+import { BANDS, GIGS, MARKS, PEOPLE } from "./seed";
 import type { BusyReason, Gig, ISODate, MarkStatus, PersonId } from "./types";
 
 export const usingDatabase = Boolean(process.env.DATABASE_URL);
@@ -24,7 +24,13 @@ export const usingDatabase = Boolean(process.env.DATABASE_URL);
 
 const g = globalThis as unknown as { __bandCalendar?: Calendar };
 const memory = () =>
-  (g.__bandCalendar ??= { bands: BANDS, gigs: [...GIGS], marks: [...MARKS] });
+  (g.__bandCalendar ??= { bands: BANDS.map(onlyActive), gigs: [...GIGS], marks: [...MARKS] });
+
+/** Rosters drop anyone not in PEOPLE — how JT and Phil are left out for now. */
+const active = new Set(PEOPLE.map((p) => p.id));
+function onlyActive<T extends { memberIds: string[] }>(band: T): T {
+  return { ...band, memberIds: band.memberIds.filter((id) => active.has(id)) };
+}
 const commit = (cal: Calendar) => {
   g.__bandCalendar = cal;
 };
@@ -65,7 +71,7 @@ export async function getCalendar(): Promise<Calendar> {
       .map((b) => ({
         id: b.id,
         name: b.name,
-        memberIds: members.filter((m) => m.bandId === b.id).map((m) => m.personId),
+        memberIds: members.filter((m) => m.bandId === b.id && active.has(m.personId)).map((m) => m.personId),
       })),
     gigs: gigRows.map((r) => ({
       id: r.id,

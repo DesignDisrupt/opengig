@@ -1,15 +1,22 @@
 import type { Band, Gig, Mark, Person } from "./types";
 
-/** Seven players across three bands, plus Adam, who manages and is on no roster. */
+/**
+ * Who can use the app. Adam manages and is on no roster; he and Brady book.
+ *
+ * JT and Phil are left out FOR NOW (Adam, 2026-11-16). They stay in BANDS and
+ * in the database, so their bands' gigs still show; the app simply drops
+ * anyone not listed here from every roster (see store.ts). To bring them
+ * back, uncomment the two lines.
+ */
 export const PEOPLE: Person[] = [
-  { id: "brady", name: "Brady" },
+  { id: "brady", name: "Brady", books: true },
   { id: "jacob", name: "Jacob" },
   { id: "mike", name: "Mike" },
   { id: "brando", name: "Brando" },
   { id: "cade", name: "Cade" },
-  { id: "jt", name: "JT" },
-  { id: "phil", name: "Phil" },
-  { id: "adam", name: "Adam", role: "manager" },
+  // { id: "jt", name: "JT" },
+  // { id: "phil", name: "Phil" },
+  { id: "adam", name: "Adam", role: "manager", books: true },
 ];
 
 export const BANDS: Band[] = [

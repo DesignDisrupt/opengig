@@ -41,13 +41,3 @@ export function CalendarGrid<T extends { date: string }>({
     </div>
   );
 }
-
-/** A gig in a desktop cell: the band's colour dot, then e.g. "WMH booked". */
-export function GigChip({ color, label }: { color: string; label: string }) {
-  return (
-    <span className="flex min-w-0 items-center gap-1.5 px-0.5 text-[11px] leading-tight font-medium">
-      <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: color }} />
-      <span className="truncate">{label}</span>
-    </span>
-  );
-}

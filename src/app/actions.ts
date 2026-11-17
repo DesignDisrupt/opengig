@@ -8,7 +8,7 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { findMe, isManager, landingFor, ME_COOKIE, ME_MAX_AGE } from "@/lib/me";
+import { canBook, findMe, isManager, landingFor, ME_COOKIE, ME_MAX_AGE } from "@/lib/me";
 import { CLOCK, eachDayOf, ISO_DATE } from "@/lib/dates";
 import { BANDS, PEOPLE } from "@/lib/seed";
 import { addGig, deleteGig, saveGig, saveMark } from "@/lib/store";
@@ -28,6 +28,13 @@ function date(form: FormData, key = "date") {
 async function me() {
   const p = findMe((await cookies()).get(ME_COOKIE)?.value);
   if (!p) throw new Error("Pick your name first");
+  return p;
+}
+
+/** Someone who books: adding, editing and cancelling gigs is theirs alone. */
+async function booker() {
+  const p = await me();
+  if (!canBook(p)) throw new Error("Only Adam and Brady can book gigs");
   return p;
 }
 
@@ -96,6 +103,7 @@ export async function quickDay(form: FormData): Promise<QuickResult> {
     const mode = str(form, "mode");
 
     if (mode === "gig") {
+      await booker();
       const bandId = band(form);
       await addGig(bandId, start, gigDetails(form), personId);
       revalidatePath("/", "layout");
@@ -125,7 +133,7 @@ export async function quickDay(form: FormData): Promise<QuickResult> {
 /** Cancel a gig from the day panel without leaving the calendar. */
 export async function removeGig(form: FormData): Promise<QuickResult> {
   try {
-    await me();
+    await booker();
     await deleteGig(str(form, "id"));
     revalidatePath("/", "layout");
     return { ok: true, message: "Gig cancelled" };
@@ -135,7 +143,7 @@ export async function removeGig(form: FormData): Promise<QuickResult> {
 }
 
 export async function updateGigDetails(form: FormData) {
-  await me();
+  await booker();
   const id = str(form, "id");
   const url = optional(form, "url");
   if (url && !/^https?:\/\//i.test(url)) throw new Error("Links must start with http:// or https://");
@@ -153,7 +161,7 @@ export async function updateGigDetails(form: FormData) {
 }
 
 export async function cancelGig(form: FormData) {
-  await me();
+  await booker();
   const id = str(form, "id");
   const back = str(form, "back");
   await deleteGig(id);

@@ -5,10 +5,11 @@
  * - Name picked → "/" goes straight to your landing page; "/?switch=1"
  *   shows the picker again so someone else can choose.
  * - "/m/<someone else>" → your landing page. You edit only your own days.
+ * - "/dates" and "/gigs/…" are for people who book; others go to their calendar.
  *   The manager's own "/m/adam" is every band's gigs in one calendar.
  */
 import { NextResponse, type NextRequest } from "next/server";
-import { findMe, landingFor, ME_COOKIE } from "@/lib/me";
+import { canBook, findMe, landingFor, ME_COOKIE } from "@/lib/me";
 
 export function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
@@ -23,6 +24,11 @@ export function proxy(request: NextRequest) {
 
   const member = pathname.match(/^\/m\/([^/]+)/);
   if (member && member[1] !== me.id) return go(landingFor(me));
+
+  // Booking Dates and gig pages are for the people who book (Adam, Brady).
+  if ((pathname.startsWith("/dates") || pathname.startsWith("/gigs/")) && !canBook(me)) {
+    return go(landingFor(me));
+  }
 
   return NextResponse.next();
 }
