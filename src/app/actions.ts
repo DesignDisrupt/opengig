@@ -2,10 +2,13 @@
 
 /**
  * Everything the UI can change. There are no accounts — the band link is the
- * key — so these validate their input but do not check who is calling.
+ * key — but every change is made as whoever picked their name on this device
+ * (the `gig_me` cookie), and a member can only change their own days.
  */
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { findMe, isManager, landingFor, ME_COOKIE, ME_MAX_AGE } from "@/lib/me";
 import { CLOCK, eachDayOf, ISO_DATE } from "@/lib/dates";
 import { BANDS, PEOPLE } from "@/lib/seed";
 import { addGig, deleteGig, saveGig, saveMark } from "@/lib/store";
@@ -21,10 +24,33 @@ function date(form: FormData, key = "date") {
   if (!ISO_DATE.test(v)) throw new Error(`Bad date: ${v}`);
   return v;
 }
-function person(form: FormData) {
+/** Whoever picked their name on this device. Every change needs one. */
+async function me() {
+  const p = findMe((await cookies()).get(ME_COOKIE)?.value);
+  if (!p) throw new Error("Pick your name first");
+  return p;
+}
+
+/** The person a form is acting for — which must be the person using the app. */
+async function person(form: FormData) {
   const v = str(form, "personId");
   if (!PEOPLE.some((p) => p.id === v)) throw new Error(`Unknown person: ${v}`);
+  if (v !== (await me()).id) throw new Error("You can only change your own calendar");
   return v;
+}
+
+/** The name picker. Remembers the choice and goes to that person's landing page. */
+export async function chooseMe(form: FormData) {
+  const p = findMe(str(form, "personId"));
+  if (!p) throw new Error("Unknown person");
+  (await cookies()).set(ME_COOKIE, p.id, {
+    maxAge: ME_MAX_AGE,
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+  });
+  redirect(landingFor(p));
 }
 function band(form: FormData, key = "bandId") {
   const v = str(form, key);
@@ -65,7 +91,7 @@ function gigDetails(form: FormData) {
  */
 export async function quickDay(form: FormData): Promise<QuickResult> {
   try {
-    const personId = person(form);
+    const personId = await person(form);
     const start = date(form);
     const mode = str(form, "mode");
 
@@ -78,6 +104,7 @@ export async function quickDay(form: FormData): Promise<QuickResult> {
     }
 
     if (mode !== "free" && mode !== "maybe" && mode !== "busy") throw new Error(`Bad choice: ${mode}`);
+    if (isManager(findMe(personId))) throw new Error("The manager books gigs but has no availability to mark");
     const end = optional(form, "endDate") ?? start;
     if (!ISO_DATE.test(end)) throw new Error("Pick an end date");
     if (end < start) throw new Error("The end date is before the start date");
@@ -98,6 +125,7 @@ export async function quickDay(form: FormData): Promise<QuickResult> {
 /** Cancel a gig from the day panel without leaving the calendar. */
 export async function removeGig(form: FormData): Promise<QuickResult> {
   try {
+    await me();
     await deleteGig(str(form, "id"));
     revalidatePath("/", "layout");
     return { ok: true, message: "Gig cancelled" };
@@ -108,12 +136,13 @@ export async function removeGig(form: FormData): Promise<QuickResult> {
 
 /** Book a band on a date from the "dates that work" view. */
 export async function bookDate(form: FormData) {
-  const gig = await addGig(band(form), date(form));
+  const gig = await addGig(band(form), date(form), {}, (await me()).id);
   revalidatePath("/", "layout");
   redirect(`/gigs/${gig.id}?new=1`);
 }
 
 export async function updateGigDetails(form: FormData) {
+  await me();
   const id = str(form, "id");
   const url = optional(form, "url");
   if (url && !/^https?:\/\//i.test(url)) throw new Error("Links must start with http:// or https://");
@@ -131,6 +160,7 @@ export async function updateGigDetails(form: FormData) {
 }
 
 export async function cancelGig(form: FormData) {
+  await me();
   const id = str(form, "id");
   const back = str(form, "back");
   await deleteGig(id);

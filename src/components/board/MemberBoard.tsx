@@ -19,6 +19,7 @@ export function MemberBoard({
   month,
   today,
   weeks,
+  manager = false,
   bands,
   myBandIds,
   prevHref,
@@ -30,6 +31,8 @@ export function MemberBoard({
   month: string;
   today: string;
   weeks: (MemberDay | null)[][];
+  /** The manager's calendar: every band's gigs, and the panel only adds gigs. */
+  manager?: boolean;
   bands: BandOption[];
   myBandIds: string[];
   prevHref: string;
@@ -54,8 +57,10 @@ export function MemberBoard({
   };
 
   const days = weeks.flat().filter((d): d is MemberDay => !!d);
-  const pickedDay = sel?.kind === "day" ? days.find((d) => d.date === sel.date) : undefined;
   const quickDate = month === today.slice(0, 7) ? today : `${month}-01`;
+  // With nothing picked, the desktop panel shows today (or the 1st of another month).
+  const view: NonNullable<Selection> = sel ?? { kind: "day", date: quickDate };
+  const pickedDay = view.kind === "day" ? days.find((d) => d.date === view.date) : undefined;
   const marked = days.filter((d) => d.gigs.length || d.mark);
 
   return (
@@ -67,12 +72,16 @@ export function MemberBoard({
             <h1 className="text-[28px] leading-tight font-semibold tracking-[-0.02em] lg:text-[34px]">
               {personName}
             </h1>
-            <p className="mt-1 text-[15px] text-muted">Every day is free. Tap one to change it.</p>
+            <p className="mt-1 text-[15px] text-muted">
+              {manager ? "Every band’s gigs. Pick a day to add one." : "Every day is free. Tap one to change it."}
+            </p>
           </div>
           <div className="flex w-full gap-2 sm:w-auto">
-            <button onClick={() => setSel({ kind: "block" })} className={`${action} bg-surface hover:bg-line`}>
-              Block dates
-            </button>
+            {!manager && (
+              <button onClick={() => setSel({ kind: "block" })} className={`${action} bg-surface hover:bg-line`}>
+                Block dates
+              </button>
+            )}
             <button onClick={() => setSel({ kind: "gig" })} className={`${action} bg-fg text-bg hover:opacity-85`}>
               + Add gig
             </button>
@@ -112,6 +121,8 @@ export function MemberBoard({
                 day={d}
                 today={today}
                 selected={sel?.kind === "day" && sel.date === d.date}
+                focused={!sel && view.kind === "day" && view.date === d.date}
+                manager={manager}
                 onPick={() => setSel({ kind: "day", date: d.date })}
               />
             ) : (
@@ -122,12 +133,16 @@ export function MemberBoard({
 
         {/* Key */}
         <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 text-[12px] text-muted">
-          <span className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full border border-dashed border-fg/50" /> Maybe
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full bg-faint" /> Busy
-          </span>
+          {!manager && (
+            <>
+              <span className="flex items-center gap-1.5">
+                <span className="size-2.5 rounded-full border border-dashed border-fg/50" /> Maybe
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="size-2.5 rounded-full bg-faint" /> Busy
+              </span>
+            </>
+          )}
           {bands.map((b) => (
             <span key={b.id} className="flex items-center gap-1.5">
               <span className="size-2.5 rounded-full" style={{ background: bandColor(b.id) }} /> {b.short}
@@ -139,7 +154,7 @@ export function MemberBoard({
         <section className="mt-10 lg:hidden">
           <h3 className="mb-2 text-[11px] font-semibold tracking-[0.08em] text-muted uppercase">This month</h3>
           {marked.length === 0 ? (
-            <p className="py-3 text-[15px] text-muted">Free all month.</p>
+            <p className="py-3 text-[15px] text-muted">{manager ? "No gigs this month." : "Free all month."}</p>
           ) : (
             <div className="divide-y divide-line border-y border-line">
               {marked.map((d) => (
@@ -159,30 +174,50 @@ export function MemberBoard({
       </div>
 
       <Panel
-        open={sel !== null}
+        sheetOpen={sel !== null}
         onClose={close}
         title={
-          sel?.kind === "day" ? longDate(sel.date).replace(/, \d{4}$/, "") : sel?.kind === "gig" ? "Add a gig" : "Block dates"
+          view.kind === "day"
+            ? `${view.date === today ? "Today · " : ""}${longDate(view.date).replace(/, \d{4}$/, "")}`
+            : view.kind === "gig"
+              ? "Add a gig"
+              : "Block dates"
         }
-        sub={sel?.kind === "day" ? describeDay(pickedDay) : sel?.kind === "block" ? "One day or a stretch of them." : "Details are optional."}
-        empty={<EmptyPanel onBlock={() => setSel({ kind: "block" })} onGig={() => setSel({ kind: "gig" })} />}
+        sub={
+          view.kind === "day"
+            ? describeDay(pickedDay, manager)
+            : view.kind === "block"
+              ? "One day or a stretch of them."
+              : "Details are optional."
+        }
       >
-        {sel?.kind === "day" && (
+        {view.kind === "day" && (
           <DayForm
-            key={`${sel.date}-${pickedDay?.mark?.status}-${pickedDay?.gigs.length}`}
+            key={`${view.date}-${pickedDay?.mark?.status}-${pickedDay?.gigs.length}`}
             personId={personId}
-            date={sel.date}
+            date={view.date}
             day={pickedDay}
             bands={bands}
             myBandIds={myBandIds}
+            gigOnly={manager}
             onDone={done}
           />
         )}
-        {sel?.kind === "block" && (
+        {view.kind === "block" && (
           <DayForm key="block" personId={personId} date={quickDate} bands={bands} myBandIds={myBandIds} start="busy" editableDate onDone={done} />
         )}
-        {sel?.kind === "gig" && (
-          <DayForm key="gig" personId={personId} date={quickDate} bands={bands} myBandIds={myBandIds} start="gig" editableDate onDone={done} />
+        {view.kind === "gig" && (
+          <DayForm
+            key="gig"
+            personId={personId}
+            date={quickDate}
+            bands={bands}
+            myBandIds={myBandIds}
+            start="gig"
+            gigOnly={manager}
+            editableDate
+            onDone={done}
+          />
         )}
       </Panel>
 
@@ -199,11 +234,16 @@ function Cell({
   day,
   today,
   selected,
+  focused,
+  manager,
   onPick,
 }: {
   day: MemberDay;
+  manager: boolean;
   today: string;
   selected: boolean;
+  /** Shown in the desktop panel by default (today) without being tapped. */
+  focused: boolean;
   onPick: () => void;
 }) {
   const gig = day.gigs[0];
@@ -225,9 +265,11 @@ function Cell({
     <button
       onClick={onPick}
       aria-pressed={selected}
-      aria-label={`${longDate(day.date)}: ${describeDay(day)}`}
+      aria-label={`${longDate(day.date)}: ${describeDay(day, manager)}`}
       className={`group flex flex-col items-center md:min-h-[112px] md:items-stretch md:rounded-xl md:border md:p-2 md:text-left md:transition-colors md:duration-200 ${
-        selected ? "md:border-fg" : "md:border-line md:hover:border-fg/30 md:hover:bg-surface/50"
+        selected
+          ? "md:border-fg"
+          : `md:border-line md:hover:border-fg/30 md:hover:bg-surface/50 ${focused ? "lg:border-fg" : ""}`
       } ${past ? "opacity-40" : ""}`}
     >
       {/* phone */}
@@ -273,28 +315,10 @@ function Cell({
   );
 }
 
-function EmptyPanel({ onBlock, onGig }: { onBlock: () => void; onGig: () => void }) {
-  return (
-    <div className="py-6 text-center">
-      <p className="text-[17px] font-semibold tracking-tight">Pick a day</p>
-      <p className="mx-auto mt-1 max-w-[240px] text-[14px] text-muted">
-        Click any date to mark it free, maybe or busy, or to put a gig on it.
-      </p>
-      <div className="mt-6 flex justify-center gap-2">
-        <button onClick={onBlock} className={`${action} bg-surface hover:bg-line`}>
-          Block dates
-        </button>
-        <button onClick={onGig} className={`${action} bg-fg text-bg hover:opacity-85`}>
-          + Add gig
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function describeDay(d?: MemberDay): string {
+function describeDay(d?: MemberDay, manager = false): string {
+  if (d?.gigs.length) return d.gigs.map((g) => `Gig · ${g.bandName}`).join(" + ");
+  if (manager) return "No gigs";
   if (!d) return "Free";
-  if (d.gigs.length) return d.gigs.map((g) => `Gig · ${g.bandName}`).join(" + ");
   if (!d.mark) return "Free";
   const label = { free: "Free", maybe: "Maybe", busy: "Busy" }[d.mark.status];
   return d.mark.note ? `${label} · ${d.mark.note}` : label;

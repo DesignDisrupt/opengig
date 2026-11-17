@@ -1,10 +1,13 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { bookDate } from "@/app/actions";
 import { DateTile, MonthNav, Page, Rows, Segmented, Skeleton, Title } from "@/components/ui";
 import { DatesBoard } from "@/components/board/DatesBoard";
 import { bandRange, type Calendar } from "@/lib/availability";
 import { bandMonth } from "@/lib/board";
+import { findMe, ME_COOKIE } from "@/lib/me";
 import { ISO_MONTH, monthBounds, monthLabel, shortDate, todayISO } from "@/lib/dates";
 import { DEFAULT_BAND_ID } from "@/lib/seed";
 import { getCalendar } from "@/lib/store";
@@ -14,7 +17,7 @@ import { bandColor, bandOf, bandShort, describe, gigSummary, personName } from "
 export default function DatesPage(props: PageProps<"/dates">) {
   return (
     <Page wide>
-      <Title>Dates that work</Title>
+      <Title>Booking Dates</Title>
       <Suspense fallback={<Skeleton className="h-[480px]" />}>
         <Dates {...props} />
       </Suspense>
@@ -27,6 +30,9 @@ type Show = "calendar" | "open" | "all";
 
 async function Dates({ searchParams }: PageProps<"/dates">) {
   const q = await searchParams;
+  // proxy.ts already sends anyone unpicked to "/"; this is the belt to its braces.
+  const me = findMe((await cookies()).get(ME_COOKIE)?.value);
+  if (!me) redirect("/");
   const cal = await getCalendar();
   const today = todayISO();
 
@@ -97,8 +103,12 @@ async function Dates({ searchParams }: PageProps<"/dates">) {
         <DatesBoard
           weeks={bandMonth(cal, bandId, month)}
           today={today}
+          month={month}
           bandId={bandId}
           bandName={band?.name ?? ""}
+          personId={me.id}
+          bands={cal.bands.map((b) => ({ id: b.id, name: b.name, short: bandShort(b.id) }))}
+          myBandIds={cal.bands.filter((b) => b.memberIds.includes(me.id)).map((b) => b.id)}
         />
       ) : visible.length === 0 ? (
         <p className="py-10 text-center text-[15px] text-muted">

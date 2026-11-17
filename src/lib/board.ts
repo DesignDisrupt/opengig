@@ -48,11 +48,22 @@ export const chip = (cal: Calendar, g: Gig): GigChip => ({
   startTime: g.startTime,
 });
 
-/** Weeks of the month for one member; null pads the grid. */
-export function memberMonth(cal: Calendar, personId: string, month: string): (MemberDay | null)[][] {
+/**
+ * Weeks of the month for one person; null pads the grid. For the manager —
+ * on no roster, with no availability of their own — every band's gigs show.
+ */
+export function memberMonth(
+  cal: Calendar,
+  personId: string,
+  month: string,
+  manager = false,
+): (MemberDay | null)[][] {
   return monthGrid(month).map((week) =>
     week.map((date) => {
       if (!date) return null;
+      if (manager) {
+        return { date, gigs: cal.gigs.filter((g) => g.date === date).map((g) => chip(cal, g)) };
+      }
       const day = personDay(cal, personId, date);
       const mark = cal.marks.find((m) => m.personId === personId && m.date === date);
       return {

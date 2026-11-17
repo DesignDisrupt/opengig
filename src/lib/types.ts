@@ -7,6 +7,11 @@ export type BandId = string;
 export interface Person {
   id: PersonId;
   name: string;
+  /**
+   * A manager books gigs for any band but is on no roster, so their own
+   * availability never counts toward "dates that work".
+   */
+  role?: "manager";
 }
 
 export interface Band {

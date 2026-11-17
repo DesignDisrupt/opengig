@@ -31,6 +31,8 @@ export function DayForm({
   myBandIds,
   start = "pick",
   editableDate = false,
+  gigOnly = false,
+  initialBandId,
   onDone,
 }: {
   personId: string;
@@ -41,12 +43,16 @@ export function DayForm({
   /** Which option opens expanded. "pick" opens none. */
   start?: Mode | "pick";
   editableDate?: boolean;
+  /** Only the Gig option — for the manager, and for booking from Dates that work. */
+  gigOnly?: boolean;
+  /** Band picked to start with, e.g. the band being booked. */
+  initialBandId?: string;
   onDone: (r: QuickResult) => void;
 }) {
   const form = useRef<HTMLFormElement>(null);
-  const [mode, setMode] = useState<Mode | null>(start === "pick" ? null : start);
+  const [mode, setMode] = useState<Mode | null>(gigOnly ? "gig" : start === "pick" ? null : start);
   const [note, setNote] = useState(day?.mark?.note ?? "");
-  const [bandId, setBandId] = useState(myBandIds[0] ?? bands[0]?.id);
+  const [bandId, setBandId] = useState(initialBandId ?? myBandIds[0] ?? bands[0]?.id);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string>();
   // What the day is now. A gig outranks the member's own mark, so nothing is "now" then.
@@ -100,7 +106,7 @@ export function DayForm({
 
       {day && day.gigs.length > 0 && <ExistingGigs day={day} onDone={onDone} />}
 
-      <div className="grid grid-cols-4 gap-2">
+      <div className={gigOnly ? "hidden" : "grid grid-cols-4 gap-2"}>
         {OPTIONS.map((o) => {
           const on = mode === o.mode;
           const isCurrent = !editableDate && current === o.mode;

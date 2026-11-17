@@ -8,7 +8,10 @@ import { BANDS, GIGS, PEOPLE } from "../lib/seed";
 import { db, schema } from "./index";
 
 async function main() {
-  await db.insert(schema.people).values(PEOPLE).onConflictDoNothing();
+  await db
+    .insert(schema.people)
+    .values(PEOPLE.map(({ id, name }) => ({ id, name })))
+    .onConflictDoNothing();
   await db
     .insert(schema.bands)
     .values(BANDS.map(({ id, name }) => ({ id, name })))

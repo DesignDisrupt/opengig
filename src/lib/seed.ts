@@ -1,6 +1,6 @@
 import type { Band, Gig, Mark, Person } from "./types";
 
-/** Seven people across three bands. Adam manages and is on no roster. */
+/** Seven players across three bands, plus Adam, who manages and is on no roster. */
 export const PEOPLE: Person[] = [
   { id: "brady", name: "Brady" },
   { id: "jacob", name: "Jacob" },
@@ -9,6 +9,7 @@ export const PEOPLE: Person[] = [
   { id: "cade", name: "Cade" },
   { id: "jt", name: "JT" },
   { id: "phil", name: "Phil" },
+  { id: "adam", name: "Adam", role: "manager" },
 ];
 
 export const BANDS: Band[] = [

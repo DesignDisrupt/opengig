@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
+import { Suspense } from "react";
+import { HeaderNav } from "@/components/HeaderNav";
 import { usingDatabase } from "@/lib/store";
 import "./globals.css";
 
@@ -27,16 +29,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         <header className="sticky top-0 z-20 bg-bg/85 backdrop-blur-md">
-          <nav className="mx-auto flex h-14 max-w-7xl items-center justify-between px-5 md:px-8">
-            <Link href="/" className="text-[15px] font-semibold tracking-tight">
-              Gig Calendar
+          <nav className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-5 md:px-8">
+            <Link href="/" aria-label="Gig Calendar" className="flex items-center gap-2 text-[15px] font-semibold tracking-tight whitespace-nowrap">
+              {/* On phones the toggle needs the width; the name shrinks to a mark. */}
+              <span aria-hidden className="grid size-8 place-items-center rounded-full bg-fg text-[14px] text-bg sm:hidden">
+                ♪
+              </span>
+              <span className="hidden sm:inline">Gig Calendar</span>
             </Link>
-            <Link
-              href="/dates"
-              className="rounded-full bg-surface px-4 py-2 text-[13px] font-medium transition-colors duration-200 hover:bg-line"
-            >
-              Dates that work
-            </Link>
+            <Suspense fallback={null}>
+              <HeaderNav />
+            </Suspense>
           </nav>
         </header>
         {children}

@@ -18,9 +18,9 @@
   --ok-tint: #e3f3e9;
   --danger: #c23b2e;
 
-  --band-wmh: #b8661f;
-  --band-jt: #2f6fd6;
-  --band-lyb: #8a4fe0;
+  --band-wmh: #7a3fd6; /* purple */
+  --band-jt: #dc2f3b; /* red */
+  --band-lyb: #0a84ff; /* bright blue */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -36,9 +36,9 @@
     --ok-tint: #15291c;
     --danger: #ef6b5f;
 
-    --band-wmh: #e08a3c;
-    --band-jt: #5d93f0;
-    --band-lyb: #a97ef0;
+    --band-wmh: #a47cf3;
+    --band-jt: #f05a63;
+    --band-lyb: #3b9bff;
   }
 }
 

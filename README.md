@@ -114,14 +114,27 @@ three bands' gigs.
 
 ## Screens
 
+**The flow is linear.** Nothing shows until you pick your name on `/`; the
+device remembers it (a `gig_me` cookie), and `src/proxy.ts` sends anyone who
+hasn't picked back to the picker. A member only ever sees and edits their own
+calendar, and every server action checks the change comes from whoever is
+picked. "Switch" in the header (`/?switch=1`) lets someone else pick.
+
+**Adam is the manager** — on no roster, so his availability never counts. He
+lands on Booking Dates and can add a gig for any band; his My Calendar is
+every band's gigs in one calendar.
+
 | Route | What it's for |
 |-------|---------------|
-| `/` | Pick your name; upcoming gigs by month |
-| `/m/[person]` | Your calendar. Click a day for the day panel; **Block dates** and **+ Add gig** up top |
-| `/dates` | Dates that work — Calendar (default), Open dates or Every day; switch band; click a day to see who's out and Book |
+| `/` | Pick your name (members, then the manager) |
+| `/m/[person]` | **My Calendar.** The side panel opens on today; **Block dates** and **+ Add gig** up top |
+| `/dates` | **Booking Dates** — Calendar (default), Open dates or Every day; switch band; click a day to see who's out and book it with details |
 | `/gigs/[id]` | A gig's details (all optional), and cancel |
 
-**The day panel** (side column on desktop, bottom sheet on phones) offers
+The header's **My Calendar / Booking Dates** toggle switches between the two.
+
+**The day panel** (a side column on desktop that defaults to today; a bottom
+sheet on phones that appears when you tap a day) offers
 Free (saves in one tap), Maybe (with a note), Busy (tap a reason — Work,
 Travel, Family, Out of town — or type one) and Gig (pick the band; time,
 venue, address, link and notes under "More details"). A day that already has
@@ -150,6 +163,8 @@ can be tried before Neon exists; changes there reset when the server restarts.
     src/app/actions.ts       the server actions every form posts to
     src/components/ui.tsx    shared pieces: segmented control, date tile, rows, buttons
     src/components/board/    the client calendars and the day panel
+    src/lib/me.ts            who is using the app, and where they land
+    src/proxy.ts             the gate: pick your name before anything else
     src/lib/board.ts         month data the calendars draw, worked out on the server
     src/lib/availability.ts  day resolution, the per-band verdict, and the changes
                              (setMark, markBusy, updateGig, removeGig)

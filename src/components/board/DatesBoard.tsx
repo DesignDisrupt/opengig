@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
-import { bookDate } from "@/app/actions";
-import type { BandBoardDay } from "@/lib/board";
+import { useCallback, useEffect, useState } from "react";
+import type { QuickResult } from "@/app/actions";
+import type { BandBoardDay, BandOption } from "@/lib/board";
 import { dayOfMonth, longDate } from "@/lib/dates";
 import { bandColor } from "@/lib/view";
+import { DayForm } from "./DayForm";
 import { Panel } from "./Panel";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -14,21 +15,56 @@ const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export function DatesBoard({
   weeks,
   today,
+  month,
   bandId,
   bandName,
+  personId,
+  bands,
+  myBandIds,
 }: {
   weeks: (BandBoardDay | null)[][];
   today: string;
+  month: string;
   bandId: string;
   bandName: string;
+  /** Whoever is using the app; gigs added here are credited to them. */
+  personId: string;
+  bands: BandOption[];
+  myBandIds: string[];
 }) {
+  // A date string, "add" for the + Add gig form, or nothing.
   const [picked, setPicked] = useState<string | null>(null);
+  const [toast, setToast] = useState<string>();
   const close = useCallback(() => setPicked(null), []);
-  const day = weeks.flat().find((d) => d?.date === picked) ?? undefined;
+  // With nothing picked, the desktop panel shows today (or the 1st of another month).
+  const quickDate = month === today.slice(0, 7) ? today : `${month}-01`;
+  const adding = picked === "add";
+  const focusDate = adding ? null : (picked ?? quickDate);
+  const day = weeks.flat().find((d) => d?.date === focusDate) ?? undefined;
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(undefined), 2200);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const done = (r: QuickResult) => {
+    if (r.ok) setToast(r.message);
+    setPicked(null);
+  };
 
   return (
-    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-10">
+    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-10">
       <div>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <p className="text-[14px] text-muted">Click a date to see who’s out, or book it.</p>
+          <button
+            onClick={() => setPicked("add")}
+            className="h-10 shrink-0 rounded-full bg-fg px-5 text-[14px] font-medium text-bg transition-opacity duration-200 hover:opacity-85"
+          >
+            + Add gig
+          </button>
+        </div>
         <div className="grid grid-cols-7 pb-2 text-center text-[11px] font-medium text-faint md:text-left md:text-[12px]">
           {WEEKDAYS.map((d) => (
             <span key={d} className="md:px-2">
@@ -40,7 +76,15 @@ export function DatesBoard({
         <div className="grid grid-cols-7 gap-y-1.5 md:gap-1.5">
           {weeks.flat().map((d, i) =>
             d ? (
-              <Cell key={d.date} day={d} today={today} bandId={bandId} selected={picked === d.date} onPick={() => setPicked(d.date)} />
+              <Cell
+                key={d.date}
+                day={d}
+                today={today}
+                bandId={bandId}
+                selected={picked === d.date}
+                focused={!picked && d.date === quickDate}
+                onPick={() => setPicked(d.date)}
+              />
             ) : (
               <span key={i} className="md:min-h-[96px]" />
             ),
@@ -63,21 +107,49 @@ export function DatesBoard({
       </div>
 
       <Panel
-        open={!!day}
+        sheetOpen={picked !== null}
         onClose={close}
-        title={day ? longDate(day.date).replace(/, \d{4}$/, "") : ""}
-        sub={day ? headline(day, bandName) : undefined}
-        empty={
-          <div className="py-6 text-center">
-            <p className="text-[17px] font-semibold tracking-tight">Pick a date</p>
-            <p className="mx-auto mt-1 max-w-[240px] text-[14px] text-muted">
-              See who’s out and why, and book {bandName} on any open day.
-            </p>
-          </div>
+        title={
+          adding
+            ? "Add a gig"
+            : day
+              ? `${day.date === today ? "Today · " : ""}${longDate(day.date).replace(/, \d{4}$/, "")}`
+              : ""
         }
+        sub={adding ? "Any band, any date. Details are optional." : day ? headline(day, bandName) : undefined}
       >
-        {day && <DayDetail day={day} bandId={bandId} bandName={bandName} past={day.date < today} />}
+        {adding && (
+          <DayForm
+            key="add"
+            personId={personId}
+            date={quickDate}
+            bands={bands}
+            myBandIds={myBandIds}
+            initialBandId={bandId}
+            editableDate
+            gigOnly
+            onDone={done}
+          />
+        )}
+        {day && (
+          <DayDetail
+            day={day}
+            bandId={bandId}
+            bandName={bandName}
+            past={day.date < today}
+            personId={personId}
+            bands={bands}
+            myBandIds={myBandIds}
+            onDone={done}
+          />
+        )}
       </Panel>
+
+      {toast && (
+        <div role="status" className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-5">
+          <span className="rounded-full bg-fg px-5 py-2.5 text-[14px] font-medium text-bg shadow-lg">✓ {toast}</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -89,7 +161,25 @@ function headline(d: BandBoardDay, bandName: string) {
   return "Not everyone can make it";
 }
 
-function DayDetail({ day, bandId, bandName, past }: { day: BandBoardDay; bandId: string; bandName: string; past: boolean }) {
+function DayDetail({
+  day,
+  bandId,
+  bandName,
+  past,
+  personId,
+  bands,
+  myBandIds,
+  onDone,
+}: {
+  day: BandBoardDay;
+  bandId: string;
+  bandName: string;
+  past: boolean;
+  personId: string;
+  bands: BandOption[];
+  myBandIds: string[];
+  onDone: (r: QuickResult) => void;
+}) {
   return (
     <div>
       {day.booked && (
@@ -121,17 +211,19 @@ function DayDetail({ day, bandId, bandName, past }: { day: BandBoardDay; bandId:
       )}
 
       {!day.booked && day.verdict !== "conflict" && !past && (
-        <form action={bookDate}>
-          <input type="hidden" name="bandId" value={bandId} />
-          <input type="hidden" name="date" value={day.date} />
-          <button
-            type="submit"
-            className="h-[52px] w-full rounded-full bg-fg text-[15px] font-medium text-bg transition-opacity duration-200 hover:opacity-85"
-          >
-            Book {bandName}
-          </button>
-          <p className="mt-2 text-center text-[12px] text-muted">You can add time and venue next.</p>
-        </form>
+        <>
+          <p className="mb-3 text-[13px] text-muted">Book it — {bandName} is picked; details are optional.</p>
+          <DayForm
+            key={day.date}
+            personId={personId}
+            date={day.date}
+            bands={bands}
+            myBandIds={myBandIds}
+            initialBandId={bandId}
+            gigOnly
+            onDone={onDone}
+          />
+        </>
       )}
     </div>
   );
@@ -142,19 +234,22 @@ function Cell({
   today,
   bandId,
   selected,
+  focused,
   onPick,
 }: {
   day: BandBoardDay;
   today: string;
   bandId: string;
   selected: boolean;
+  /** In the desktop panel by default (today) without being tapped. */
+  focused: boolean;
   onPick: () => void;
 }) {
   const past = day.date < today;
   const isToday = day.date === today;
   const color = bandColor(bandId);
   // Open days are tinted, not labelled: the eye should land on what ISN'T open.
-  const open = !day.booked && day.verdict === "works";
+  const open = !past && !day.booked && day.verdict === "works";
 
   const phone = day.booked
     ? "font-semibold text-white"
@@ -171,8 +266,10 @@ function Cell({
       aria-label={`${longDate(day.date)}: ${headline(day, "the band")}`}
       className={`flex flex-col items-center md:min-h-[96px] md:items-stretch md:rounded-xl md:border md:p-2 md:text-left md:transition-colors md:duration-200 ${
         selected
-          ? "md:border-fg"
-          : open
+          ? `md:border-fg ${open ? "md:bg-ok-tint" : ""}`
+          : focused
+            ? `md:border-line lg:border-fg ${open ? "md:bg-ok-tint" : ""}`
+            : open
             ? "md:border-transparent md:bg-ok-tint md:hover:border-ok/40"
             : "md:border-line md:hover:border-fg/30"
       } ${past ? "opacity-35" : ""}`}
