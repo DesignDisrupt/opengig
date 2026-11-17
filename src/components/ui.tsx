@@ -90,22 +90,6 @@ export function MonthNav({ month, href }: { month: string; href: (month: string)
   );
 }
 
-/** A stacked date tile — DEC over 18 — that leads a list row. */
-export function DateTile({ date, tone }: { date: string; tone?: string }) {
-  const d = new Date(`${date}T00:00:00Z`);
-  const mon = d.toLocaleString("en-US", { month: "short", timeZone: "UTC" }).toUpperCase();
-  const wd = d.toLocaleString("en-US", { weekday: "short", timeZone: "UTC" });
-  return (
-    <div className="flex w-11 shrink-0 flex-col items-center leading-none">
-      <span className="text-[10px] font-semibold tracking-[0.06em]" style={{ color: tone ?? "var(--muted)" }}>
-        {mon}
-      </span>
-      <span className="mt-1 text-[22px] font-semibold tracking-tight">{d.getUTCDate()}</span>
-      <span className="mt-1 text-[10px] text-muted">{wd}</span>
-    </div>
-  );
-}
-
 export function Rows({ children }: { children: ReactNode }) {
   return <div className="divide-y divide-line border-y border-line">{children}</div>;
 }

@@ -128,7 +128,7 @@ every band's gigs in one calendar.
 |-------|---------------|
 | `/` | Pick your name (members, then the manager) |
 | `/m/[person]` | **My Calendar.** The side panel opens on today; **Block dates** and **+ Add gig** up top |
-| `/dates` | **Booking Dates** — Calendar (default), Open dates or Every day; switch band; click a day to see who's out and book it with details |
+| `/dates` | **Booking Dates** — one calendar per band; click a day to see who's out, mark **Your day**, or book it. **Block dates** and **+ Add gig** up top |
 | `/gigs/[id]` | A gig's details (all optional), and cancel |
 
 The header's **My Calendar / Booking Dates** toggle switches between the two.

@@ -134,13 +134,6 @@ export async function removeGig(form: FormData): Promise<QuickResult> {
   }
 }
 
-/** Book a band on a date from the "dates that work" view. */
-export async function bookDate(form: FormData) {
-  const gig = await addGig(band(form), date(form), {}, (await me()).id);
-  revalidatePath("/", "layout");
-  redirect(`/gigs/${gig.id}?new=1`);
-}
-
 export async function updateGigDetails(form: FormData) {
   await me();
   const id = str(form, "id");

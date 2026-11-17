@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { QuickResult } from "@/app/actions";
-import type { BandBoardDay, BandOption } from "@/lib/board";
+import type { BandBoardDay, BandOption, MemberDay } from "@/lib/board";
 import { dayOfMonth, longDate } from "@/lib/dates";
 import { bandColor } from "@/lib/view";
 import { DayForm } from "./DayForm";
@@ -11,9 +11,16 @@ import { Panel } from "./Panel";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-/** "Dates that work" as a month grid: green works, dashed maybe, faded conflict, filled booked. */
+/**
+ * Booking Dates: a month grid of which days work for a band (green works,
+ * dashed maybe, faded conflict, filled booked). The side panel explains a
+ * day, and lets a member mark their own day right there — Free, Maybe, Busy
+ * or a gig — while the manager books.
+ */
 export function DatesBoard({
   weeks,
+  myWeeks,
+  manager,
   today,
   month,
   bandId,
@@ -21,8 +28,13 @@ export function DatesBoard({
   personId,
   bands,
   myBandIds,
+  bandSwitch,
+  monthBar,
 }: {
   weeks: (BandBoardDay | null)[][];
+  /** The person's own days this month, for the "Your day" part of the panel. */
+  myWeeks: (MemberDay | null)[][];
+  manager: boolean;
   today: string;
   month: string;
   bandId: string;
@@ -31,16 +43,19 @@ export function DatesBoard({
   personId: string;
   bands: BandOption[];
   myBandIds: string[];
+  bandSwitch: ReactNode;
+  monthBar: ReactNode;
 }) {
-  // A date string, "add" for the + Add gig form, or nothing.
+  // A date, "add" (+ Add gig), "block" (Block dates), or nothing.
   const [picked, setPicked] = useState<string | null>(null);
   const [toast, setToast] = useState<string>();
   const close = useCallback(() => setPicked(null), []);
   // With nothing picked, the desktop panel shows today (or the 1st of another month).
   const quickDate = month === today.slice(0, 7) ? today : `${month}-01`;
-  const adding = picked === "add";
-  const focusDate = adding ? null : (picked ?? quickDate);
+  const mode = picked === "add" || picked === "block" ? picked : null;
+  const focusDate = mode ? null : (picked ?? quickDate);
   const day = weeks.flat().find((d) => d?.date === focusDate) ?? undefined;
+  const myDay = myWeeks.flat().find((d) => d?.date === focusDate) ?? undefined;
 
   useEffect(() => {
     if (!toast) return;
@@ -54,103 +69,136 @@ export function DatesBoard({
   };
 
   return (
-    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-10">
-      <div>
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <p className="text-[14px] text-muted">Click a date to see who’s out, or book it.</p>
-          <button
-            onClick={() => setPicked("add")}
-            className="h-10 shrink-0 rounded-full bg-fg px-5 text-[14px] font-medium text-bg transition-opacity duration-200 hover:opacity-85"
-          >
+    <>
+      <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        {bandSwitch}
+        <div className="flex gap-2">
+          {!manager && (
+            <button onClick={() => setPicked("block")} className={`${action} bg-surface hover:bg-line`}>
+              Block dates
+            </button>
+          )}
+          <button onClick={() => setPicked("add")} className={`${action} bg-fg text-bg hover:opacity-85`}>
             + Add gig
           </button>
         </div>
-        <div className="grid grid-cols-7 pb-2 text-center text-[11px] font-medium text-faint md:text-left md:text-[12px]">
-          {WEEKDAYS.map((d) => (
-            <span key={d} className="md:px-2">
-              <span className="md:hidden">{d[0]}</span>
-              <span className="hidden md:inline">{d}</span>
-            </span>
-          ))}
-        </div>
-        <div className="grid grid-cols-7 gap-y-1.5 md:gap-1.5">
-          {weeks.flat().map((d, i) =>
-            d ? (
-              <Cell
-                key={d.date}
-                day={d}
-                today={today}
-                bandId={bandId}
-                selected={picked === d.date}
-                focused={!picked && d.date === quickDate}
-                onPick={() => setPicked(d.date)}
-              />
-            ) : (
-              <span key={i} className="md:min-h-[96px]" />
-            ),
-          )}
-        </div>
-        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 text-[12px] text-muted">
-          <span className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full bg-ok-tint ring-1 ring-ok/40" /> Everyone free
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full border border-dashed border-fg/50" /> Someone’s a maybe
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full" style={{ background: bandColor(bandId) }} /> Booked
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full bg-faint/50" /> Not everyone
-          </span>
-        </div>
       </div>
+      {monthBar}
 
-      <Panel
-        sheetOpen={picked !== null}
-        onClose={close}
-        title={
-          adding
-            ? "Add a gig"
-            : day
-              ? `${day.date === today ? "Today · " : ""}${longDate(day.date).replace(/, \d{4}$/, "")}`
-              : ""
-        }
-        sub={adding ? "Any band, any date. Details are optional." : day ? headline(day, bandName) : undefined}
-      >
-        {adding && (
-          <DayForm
-            key="add"
-            personId={personId}
-            date={quickDate}
-            bands={bands}
-            myBandIds={myBandIds}
-            initialBandId={bandId}
-            editableDate
-            gigOnly
-            onDone={done}
-          />
-        )}
-        {day && (
-          <DayDetail
-            day={day}
-            bandId={bandId}
-            bandName={bandName}
-            past={day.date < today}
-            personId={personId}
-            bands={bands}
-            myBandIds={myBandIds}
-            onDone={done}
-          />
-        )}
-      </Panel>
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-10">
+        <div>
+          <div className="grid grid-cols-7 pb-2 text-center text-[11px] font-medium text-faint md:text-left md:text-[12px]">
+            {WEEKDAYS.map((d) => (
+              <span key={d} className="md:px-2">
+                <span className="md:hidden">{d[0]}</span>
+                <span className="hidden md:inline">{d}</span>
+              </span>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-y-1.5 md:gap-1.5">
+            {weeks.flat().map((d, i) =>
+              d ? (
+                <Cell
+                  key={d.date}
+                  day={d}
+                  today={today}
+                  bandId={bandId}
+                  selected={picked === d.date}
+                  focused={!picked && d.date === quickDate}
+                  onPick={() => setPicked(d.date)}
+                />
+              ) : (
+                <span key={i} className="md:min-h-[96px]" />
+              ),
+            )}
+          </div>
+          <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 text-[12px] text-muted">
+            <span className="flex items-center gap-1.5">
+              <span className="size-2.5 rounded-full bg-ok-tint ring-1 ring-ok/40" /> Everyone free
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="size-2.5 rounded-full border border-dashed border-fg/50" /> Someone’s a maybe
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="size-2.5 rounded-full" style={{ background: bandColor(bandId) }} /> Booked
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="size-2.5 rounded-full bg-faint/50" /> Not everyone
+            </span>
+          </div>
+        </div>
+
+        <Panel
+          sheetOpen={picked !== null}
+          onClose={close}
+          title={
+            mode === "add"
+              ? "Add a gig"
+              : mode === "block"
+                ? "Block dates"
+                : day
+                  ? `${day.date === today ? "Today · " : ""}${longDate(day.date).replace(/, \d{4}$/, "")}`
+                  : ""
+          }
+          sub={
+            mode === "add"
+              ? "Any band, any date. Details are optional."
+              : mode === "block"
+                ? "One day or a stretch of them."
+                : day
+                  ? headline(day, bandName)
+                  : undefined
+          }
+        >
+          {mode === "add" && (
+            <DayForm
+              key="add"
+              personId={personId}
+              date={quickDate}
+              bands={bands}
+              myBandIds={myBandIds}
+              initialBandId={bandId}
+              start="gig"
+              editableDate
+              gigOnly
+              onDone={done}
+            />
+          )}
+          {mode === "block" && (
+            <DayForm
+              key="block"
+              personId={personId}
+              date={quickDate}
+              bands={bands}
+              myBandIds={myBandIds}
+              start="busy"
+              editableDate
+              onDone={done}
+            />
+          )}
+          {day && (
+            <DayDetail
+              day={day}
+              myDay={myDay}
+              manager={manager}
+              bandId={bandId}
+              bandName={bandName}
+              past={day.date < today}
+              personId={personId}
+              bands={bands}
+              myBandIds={myBandIds}
+              onDone={done}
+            />
+          )}
+        </Panel>
+      </div>
 
       {toast && (
         <div role="status" className="fixed inset-x-0 bottom-6 z-50 flex justify-center px-5">
           <span className="rounded-full bg-fg px-5 py-2.5 text-[14px] font-medium text-bg shadow-lg">✓ {toast}</span>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -163,6 +211,8 @@ function headline(d: BandBoardDay, bandName: string) {
 
 function DayDetail({
   day,
+  myDay,
+  manager,
   bandId,
   bandName,
   past,
@@ -172,6 +222,8 @@ function DayDetail({
   onDone,
 }: {
   day: BandBoardDay;
+  myDay?: MemberDay;
+  manager: boolean;
   bandId: string;
   bandName: string;
   past: boolean;
@@ -180,9 +232,12 @@ function DayDetail({
   myBandIds: string[];
   onDone: (r: QuickResult) => void;
 }) {
+  // A member who plays in the booked gig sees it in "Your day" with Edit/Cancel; don't show it twice.
+  const bookedShownBelow = !manager && !!day.booked && !!myDay?.gigs.some((g) => g.id === day.booked?.id);
+
   return (
     <div>
-      {day.booked && (
+      {day.booked && !bookedShownBelow && (
         <Link
           href={`/gigs/${day.booked.id}`}
           className="mb-5 flex items-center gap-3 rounded-2xl bg-surface py-3 pr-4 pl-3 transition-colors duration-200 hover:bg-line"
@@ -197,7 +252,7 @@ function DayDetail({
       )}
 
       {day.out.length > 0 && (
-        <div className="mb-5 divide-y divide-line rounded-2xl bg-surface">
+        <div className="mb-6 divide-y divide-line rounded-2xl bg-surface">
           {day.out.map((o) => (
             <div key={o.why} className="px-4 py-3">
               <p className="text-[15px] font-medium">{o.who}</p>
@@ -210,17 +265,36 @@ function DayDetail({
         </div>
       )}
 
-      {!day.booked && day.verdict !== "conflict" && !past && (
+      {manager ? (
+        !day.booked &&
+        !past && (
+          <>
+            <p className="mb-3 text-[13px] text-muted">
+              {day.verdict === "conflict" ? "Book anyway" : "Book it"} — {bandName} is picked; details are optional.
+            </p>
+            <DayForm
+              key={day.date}
+              personId={personId}
+              date={day.date}
+              bands={bands}
+              myBandIds={myBandIds}
+              initialBandId={bandId}
+              gigOnly
+              onDone={onDone}
+            />
+          </>
+        )
+      ) : (
         <>
-          <p className="mb-3 text-[13px] text-muted">Book it — {bandName} is picked; details are optional.</p>
+          <h3 className="mb-3 text-[11px] font-semibold tracking-[0.08em] text-muted uppercase">Your day</h3>
           <DayForm
-            key={day.date}
+            key={`${day.date}-${myDay?.mark?.status}-${myDay?.gigs.length}`}
             personId={personId}
             date={day.date}
+            day={myDay}
             bands={bands}
             myBandIds={myBandIds}
             initialBandId={bandId}
-            gigOnly
             onDone={onDone}
           />
         </>
@@ -228,6 +302,9 @@ function DayDetail({
     </div>
   );
 }
+
+const action =
+  "inline-flex h-10 flex-1 items-center justify-center rounded-full px-5 text-[14px] font-medium whitespace-nowrap transition-colors duration-200 md:flex-none";
 
 function Cell({
   day,
@@ -297,7 +374,7 @@ function Cell({
           >
             Booked
           </span>
-        ) : open ? null : day.verdict === "maybe" ? (
+        ) : open || past ? null : day.verdict === "maybe" ? (
           <span className="block truncate rounded-md border border-dashed border-fg/30 px-1.5 py-0.5 text-[11px] text-muted">Maybe</span>
         ) : (
           <span className="flex flex-wrap items-center gap-1 px-0.5 text-[11px] text-faint">
