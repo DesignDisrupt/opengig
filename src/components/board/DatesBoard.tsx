@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { QuickResult } from "@/app/actions";
 import type { BandBoardDay, BandOption, MemberDay } from "@/lib/board";
-import { compactClock, dayOfMonth, longDate } from "@/lib/dates";
-import { bandColor } from "@/lib/view";
+import { dayOfMonth, longDate } from "@/lib/dates";
+import { bandAbbr, bandColor } from "@/lib/view";
 import { CalendarGrid, GigChip } from "./CalendarGrid";
 import { DayForm } from "./DayForm";
 import { Panel } from "./Panel";
@@ -108,10 +108,10 @@ export function DatesBoard({
               <span className="size-2.5 rounded-full border border-dashed border-fg/50" /> Someone’s a maybe
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full" style={{ background: bandColor(bandId) }} /> Booked
+              <span className="size-2.5 rounded-full" style={{ background: bandColor(bandId) }} /> {bandAbbr(bandId)} booked
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full bg-faint/50" /> Not everyone
+              <span className="size-2.5 rounded-full bg-surface ring-1 ring-line" /> Someone’s out or another band plays
             </span>
           </div>
         </div>
@@ -192,6 +192,7 @@ export function DatesBoard({
 
 function headline(d: BandBoardDay, bandName: string) {
   if (d.booked) return `${bandName} is booked`;
+  if (d.verdict === "works" && d.otherBooked) return "Everyone’s free, but another band plays";
   if (d.verdict === "works") return "Everyone’s free";
   if (d.verdict === "maybe") return "Free, with a maybe";
   return "Not everyone can make it";
@@ -237,6 +238,17 @@ function DayDetail({
           </span>
           <span className="text-[13px] text-muted">Open ›</span>
         </Link>
+      )}
+
+      {day.out.length === 0 && day.otherBooked && (
+        <div className="mb-6 rounded-2xl bg-surface px-4 py-3">
+          {day.otherBandIds.map((id) => (
+            <p key={id} className="flex items-center gap-1.5 text-[14px]">
+              <span className="size-2 rounded-full" style={{ background: bandColor(id) }} />
+              {bands.find((b) => b.id === id)?.name} has a gig
+            </p>
+          ))}
+        </div>
       )}
 
       {day.out.length > 0 && (
@@ -313,16 +325,18 @@ function Cell({
   const past = day.date < today;
   const isToday = day.date === today;
   const color = bandColor(bandId);
-  // Open days are tinted, not labelled: the eye should land on what ISN'T open.
-  const open = !past && !day.booked && day.verdict === "works";
+  // Open days are tinted green, not labelled. A day someone is out of, or another
+  // band is playing, is grey: taken, at a glance.
+  const taken = !day.booked && (day.verdict === "conflict" || day.otherBooked);
+  const open = !past && !day.booked && !taken && day.verdict === "works";
 
   const phone = day.booked
     ? "font-semibold text-white"
-    : day.verdict === "works"
-      ? "bg-ok-tint font-semibold text-ok"
-      : day.verdict === "maybe"
-        ? "border-[1.5px] border-dashed border-fg/45"
-        : "text-faint";
+    : taken
+      ? "bg-surface text-muted"
+      : day.verdict === "works"
+        ? "bg-ok-tint font-semibold text-ok"
+        : "border-[1.5px] border-dashed border-fg/45";
 
   return (
     <button
@@ -330,7 +344,11 @@ function Cell({
       aria-pressed={selected}
       aria-label={`${longDate(day.date)}: ${headline(day, "the band")}`}
       className={`flex w-full flex-col items-center md:h-full md:min-h-[112px] md:items-stretch md:p-2 md:text-left md:transition-[background-color,box-shadow] md:duration-200 ${
-        open ? "md:bg-ok-tint/70 md:hover:bg-ok-tint" : "md:hover:bg-surface/60"
+        open
+          ? "md:bg-ok-tint/70 md:hover:bg-ok-tint"
+          : taken
+            ? "md:bg-surface md:hover:bg-line/60"
+            : "md:hover:bg-surface/60"
       } ${
         selected
           ? "md:shadow-[inset_0_0_0_2px_var(--fg)]"
@@ -349,33 +367,33 @@ function Cell({
 
       <span
         className={`hidden size-7 place-items-center rounded-full text-[14px] md:grid ${
-          isToday ? "bg-fg font-semibold text-bg" : open ? "font-semibold text-ok" : "font-medium"
+          isToday ? "bg-fg font-semibold text-bg" : open ? "font-semibold text-ok" : taken ? "font-medium text-muted" : "font-medium"
         }`}
       >
         {dayOfMonth(day.date)}
       </span>
-      <span className="mt-1.5 hidden min-w-0 md:block">
-        {day.booked ? (
-          <GigChip
-            color={color}
-            label="Booked"
-            time={day.booked.startTime ? compactClock(day.booked.startTime) : undefined}
-          />
-        ) : open || past ? null : day.verdict === "maybe" ? (
-          <span className="block truncate rounded-md border border-dashed border-fg/30 px-1.5 py-0.5 text-[11px] text-muted">Maybe</span>
-        ) : (
-          <span className="flex flex-wrap items-center gap-1 px-0.5 text-[11px] text-faint">
-            {day.out.map((o) =>
-              o.bandId ? (
-                <span key={o.why} className="size-2 rounded-full" style={{ background: bandColor(o.bandId) }} />
-              ) : null,
+      <span className="mt-1.5 hidden min-w-0 flex-col gap-1 md:flex">
+        {day.booked && <GigChip color={color} label={`${day.booked.bandAbbr} booked`} />}
+        {!day.booked && !past && (
+          <>
+            {day.otherBandIds.map((id) => (
+              <GigChip key={id} color={bandColor(id)} label={`${bandAbbr(id)} booked`} />
+            ))}
+            {otherOut(day) > 0 && (
+              <span className="px-0.5 text-[11px] text-muted">{otherOut(day)} out</span>
             )}
-            {outCount(day)} out
-          </span>
+            {!taken && day.verdict === "maybe" && (
+              <span className="block truncate rounded-md border border-dashed border-fg/30 px-1.5 py-0.5 text-[11px] text-muted">
+                Maybe
+              </span>
+            )}
+          </>
         )}
       </span>
     </button>
   );
 }
 
-const outCount = (d: BandBoardDay) => d.out.reduce((n, o) => n + o.who.split(", ").length, 0);
+/** People out for reasons other than another band's gig — those show as "JT booked" instead. */
+const otherOut = (d: BandBoardDay) =>
+  d.out.filter((o) => !o.bandId).reduce((n, o) => n + o.who.split(", ").length, 0);

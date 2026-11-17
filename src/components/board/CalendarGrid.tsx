@@ -42,18 +42,12 @@ export function CalendarGrid<T extends { date: string }>({
   );
 }
 
-/** A gig in a desktop cell: band colour as a left bar on a soft tint, then the time. */
-export function GigChip({ color, label, time }: { color: string; label: string; time?: string }) {
+/** A gig in a desktop cell: the band's colour dot, then e.g. "WMH booked". */
+export function GigChip({ color, label }: { color: string; label: string }) {
   return (
-    <span
-      className="flex min-w-0 items-center gap-1 rounded-md py-1 pr-1.5 pl-2 text-[11px] leading-tight font-medium"
-      style={{
-        background: `color-mix(in srgb, ${color} 12%, transparent)`,
-        boxShadow: `inset 3px 0 0 ${color}`,
-      }}
-    >
+    <span className="flex min-w-0 items-center gap-1.5 px-0.5 text-[11px] leading-tight font-medium">
+      <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: color }} />
       <span className="truncate">{label}</span>
-      {time && <span className="shrink-0 font-normal text-muted">{time}</span>}
     </span>
   );
 }

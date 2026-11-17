@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import type { QuickResult } from "@/app/actions";
 import type { BandOption, MemberDay } from "@/lib/board";
-import { compactClock, dayOfMonth, longDate, monthLabel } from "@/lib/dates";
+import { dayOfMonth, longDate, monthLabel } from "@/lib/dates";
 import { bandColor } from "@/lib/view";
 import { CalendarGrid, GigChip } from "./CalendarGrid";
 import { DayForm } from "./DayForm";
@@ -278,12 +278,7 @@ function Cell({
       </span>
       <span className="mt-1.5 hidden flex-col gap-1 md:flex">
         {day.gigs.map((g) => (
-          <GigChip
-            key={g.id}
-            color={bandColor(g.bandId)}
-            label={g.bandShort}
-            time={g.startTime ? compactClock(g.startTime) : undefined}
-          />
+          <GigChip key={g.id} color={bandColor(g.bandId)} label={`${g.bandAbbr} booked`} />
         ))}
         {!gig && day.mark?.status === "busy" && (
           <span className="truncate rounded-md bg-surface px-1.5 py-1 text-[11px] leading-tight text-muted">

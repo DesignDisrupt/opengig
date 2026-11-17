@@ -19,6 +19,14 @@ const BAND_SHORT: Record<string, string> = {
 };
 export const bandShort = (bandId: string) => BAND_SHORT[bandId] ?? bandId;
 
+/** Initials for calendar cells: "WMH booked", "JT booked", "LYB booked". */
+const BAND_ABBR: Record<string, string> = {
+  "whiskey-mountain-highway": "WMH",
+  "jt-sheets-band": "JT",
+  loveyoubye: "LYB",
+};
+export const bandAbbr = (bandId: string) => BAND_ABBR[bandId] ?? bandShort(bandId);
+
 export const personName = (id: string) => PEOPLE.find((p) => p.id === id)?.name ?? id;
 export const findPerson = (id: string) => PEOPLE.find((p) => p.id === id);
 

@@ -5,7 +5,7 @@
 import { bandDay, personDay, type Calendar } from "./availability";
 import { monthGrid } from "./dates";
 import type { DayVerdict, Gig, ISODate, MarkStatus } from "./types";
-import { bandOf, bandShort, describe, gigSummary, personName } from "./view";
+import { bandAbbr, bandOf, bandShort, describe, gigSummary, personName } from "./view";
 
 export interface BandOption {
   id: string;
@@ -17,8 +17,10 @@ export interface GigChip {
   id: string;
   bandId: string;
   bandName: string;
-  /** "WMH", "JT Sheets" — fits a calendar cell. */
+  /** "WMH", "JT Sheets" — for the band switcher. */
   bandShort: string;
+  /** "WMH", "JT", "LYB" — for calendar cells. */
+  bandAbbr: string;
   summary: string;
   startTime?: string;
 }
@@ -37,6 +39,10 @@ export interface BandBoardDay {
   /** Who is out and why, grouped: "Jacob, Brando, Cade" — "Gig with Loveyoubye". */
   out: { who: string; why: string; bandId?: string }[];
   maybe: boolean;
+  /** Another band has a gig that day — the day reads as taken even if nobody overlaps. */
+  otherBooked: boolean;
+  /** Those bands, by id, for the panel to name. */
+  otherBandIds: string[];
 }
 
 export const chip = (cal: Calendar, g: Gig): GigChip => ({
@@ -44,6 +50,7 @@ export const chip = (cal: Calendar, g: Gig): GigChip => ({
   bandId: g.bandId,
   bandName: bandOf(cal, g.bandId)?.name ?? g.bandId,
   bandShort: bandShort(g.bandId),
+  bandAbbr: bandAbbr(g.bandId),
   summary: gigSummary(g),
   startTime: g.startTime,
 });
@@ -101,6 +108,8 @@ export function bandMonth(cal: Calendar, bandId: string, month: string): (BandBo
         booked: booked ? chip(cal, booked) : undefined,
         out: [...groups].map(([why, g]) => ({ why, who: g.who.join(", "), bandId: g.bandId })),
         maybe: d.members.some((m) => m.status === "maybe"),
+        otherBooked: cal.gigs.some((g) => g.date === date && g.bandId !== bandId),
+        otherBandIds: [...new Set(cal.gigs.filter((g) => g.date === date && g.bandId !== bandId).map((g) => g.bandId))],
       };
     }),
   );
